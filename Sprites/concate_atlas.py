@@ -9,21 +9,14 @@ from PIL import Image
 # CONFIG (edit these)
 # ----------------------------
 root_dir = "/mnt/ssd/HMeshi/_0_card_design/card_suit_icons/tmp/"
-# root_dir = "/mnt/ssd/HMeshi/_0_card_design/cardback_geom_abstract/tmp/"
-root_dir = "/home/kyue/Downloads/tmp/"
-root_dir = "/mnt/ssd/HMeshi/_0_card_design/city/_-2_export/pawns/"
-root_dir = "/mnt/ssd/HMeshi/_0_card_design/_0_henshin_heros/_0_fire/egg/_0_1_snail-rider/for_sheet/"
-root_dir = "/mnt/ssd/HMeshi/_0_card_design/city/_-2_export/sheet/"
-root_dir = "/mnt/ssd/HMeshi/_0_card_design/_1_cardback_geom_abstract/export/"
-# root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/grass/exported/"
-root_dir = "/mnt/ssd/HMeshi/_7_live2love/love2d-fxaa/tmp/"
+root_dir = "/mnt/ssd/HMeshi/_0_card_design/_1_cardback_geom_abstract/export/cards_antialias/"
 name = "suits"
 name = "cards"
 # name = "pawns"
 # name = "meshi"
 # name = "machi"
 # name = "grass"
-name = "map"
+# name = "map"
 SOURCE_DIR = os.path.join(root_dir, "./")			# folder with 0.png, 1.png, etc.
 OUT_ATLAS_PNG = os.path.join(root_dir, "./{:s}.png".format(name))
 OUT_ATLAS_JSON = os.path.join(root_dir, "./{:s}.json".format(name))
@@ -33,8 +26,9 @@ MAX_ATLAS_WIDTH = 2048					# typical: 1024/2048/4096
 PADDING = 2								# space between sprites to avoid bleeding
 SORT_MODE = "height"					# "name" | "height" | "area"
 POWER_OF_TWO = False					# round atlas size up to next power of two
-
-# Optional: if your art is pixel-art and you use nearest filtering, PADDING=1 is often ok.
+INPUT_HAS_EXTRUDED_PADDING = True
+INPUT_HAS_EXTRUDED_PADDING = False
+INPUT_EXTRUDED_PADDING = 4
 
 
 # ----------------------------
@@ -43,9 +37,10 @@ POWER_OF_TWO = False					# round atlas size up to next power of two
 RESIZE_MODE = "fit_long_edge"		# "none" | "scale" | "fit_long_edge" | "fit_box"
 SCALE = 0.5							# used when RESIZE_MODE == "scale"
 TARGET_LONG_EDGE = 32				# used when RESIZE_MODE == "fit_long_edge"
-TARGET_LONG_EDGE = 90				# used when RESIZE_MODE == "fit_long_edge"
-TARGET_LONG_EDGE = 128
-TARGET_LONG_EDGE = 512
+TARGET_LONG_EDGE = 90				
+# TARGET_LONG_EDGE = 128
+# TARGET_LONG_EDGE = 256
+# TARGET_LONG_EDGE = 512
 TARGET_W = 1024						# used when RESIZE_MODE == "fit_box"
 TARGET_H = 1024						# used when RESIZE_MODE == "fit_box"
 PIXEL_ART = False					# True -> NEAREST, 
@@ -61,6 +56,9 @@ def _resample_filter():
 
 
 def _maybe_resize(img: Image.Image) -> Image.Image:
+	if INPUT_HAS_EXTRUDED_PADDING:
+		return img
+
 	if RESIZE_MODE == "none":
 		return img
 
@@ -123,12 +121,22 @@ def _collect_images(source_dir: str):
 		img = Image.open(p).convert("RGBA")
 		img = _maybe_resize(img)
 		w, h = img.size
+		if INPUT_HAS_EXTRUDED_PADDING and (w <= INPUT_EXTRUDED_PADDING * 2 or h <= INPUT_EXTRUDED_PADDING * 2):
+			raise RuntimeError(
+				f"Sprite '{p.name}' is too small for INPUT_EXTRUDED_PADDING={INPUT_EXTRUDED_PADDING}px: {w}x{h}"
+			)
+		content_w = max(1, w - INPUT_EXTRUDED_PADDING * 2) if INPUT_HAS_EXTRUDED_PADDING else w
+		content_h = max(1, h - INPUT_EXTRUDED_PADDING * 2) if INPUT_HAS_EXTRUDED_PADDING else h
 		items.append({
 			"name": p.name,
 			"path": str(p),
 			"img": img,
 			"w": w,
 			"h": h,
+			"content_x": INPUT_EXTRUDED_PADDING if INPUT_HAS_EXTRUDED_PADDING else 0,
+			"content_y": INPUT_EXTRUDED_PADDING if INPUT_HAS_EXTRUDED_PADDING else 0,
+			"content_w": content_w,
+			"content_h": content_h,
 		})
 
 	# Deterministic ordering
@@ -181,6 +189,7 @@ def _shelf_pack(items, max_width: int, padding: int):
 
 def build_atlas():
 	items = _collect_images(SOURCE_DIR)
+	items_by_name = {it["name"]: it for it in items}
 	placements, atlas_w, atlas_h = _shelf_pack(items, MAX_ATLAS_WIDTH, PADDING)
 
 	# Optionally round up to power-of-two sizes
@@ -209,9 +218,18 @@ def build_atlas():
 	}
 
 	for name, fr in placements.items():
+		item = items_by_name[name]
 		# Store rectangles (top-left origin)
 		meta["frames"][name[:-4]] = {
-			"frame": {"x": fr["x"], "y": fr["y"], "w": fr["w"], "h": fr["h"]}
+			"frame": {
+				"x": fr["x"] + item["content_x"],
+				"y": fr["y"] + item["content_y"],
+				"w": item["content_w"],
+				"h": item["content_h"],
+			},
+			"sourceSize": {"w": item["content_w"], "h": item["content_h"]},
+			"spriteSourceSize": {"x": 0, "y": 0, "w": item["content_w"], "h": item["content_h"]},
+			"atlasRect": {"x": fr["x"], "y": fr["y"], "w": fr["w"], "h": fr["h"]},
 		}
 
 	out_json = Path(OUT_ATLAS_JSON)

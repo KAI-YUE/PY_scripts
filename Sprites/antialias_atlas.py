@@ -2,12 +2,13 @@ import os
 from collections import deque
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageFilter
 
 # ----------------------------
 # CONFIG
 # ----------------------------
 root_dir = "/mnt/ssd/HMeshi/_0_card_design/_1_cardback_geom_abstract/export/"
+# root_dir = "/mnt/ssd/HMeshi/_0_card_design/_1_cardback_geom_abstract/export/"
 name = "cards"
 
 SOURCE_DIR = os.path.join(root_dir, "./")
@@ -16,14 +17,24 @@ OUT_DIR = os.path.join(root_dir, f"./{name}_antialias/")
 
 INCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 PADDING = 4
-TARGET_LONG_EDGE = None
+TARGET_LONG_EDGE = 128
+
 TRIM_ALPHA = True
 ALPHA_THRESHOLD = 1
 ALPHA_HARD_TRIM = True
-ALPHA_HARD_TRIM_PERCENT = 20.0
+ALPHA_HARD_TRIM_PERCENT = 12
+
 TRIM_KEEP = 0
-SAVE_TRIM_ONLY = True
+SAVE_TRIM_ONLY = False
 OVERWRITE = True
+
+SOFT_EXTRUDE_ALPHA = True
+SOFT_EXTRUDE_MAX_ALPHA = 96
+
+EDGE_BLUR = False
+EDGE_BLUR_RADIUS = 4
+EDGE_BLUR_WIDTH = 12
+EDGE_BLUR_MODE = "rgba"   # "alpha" | "rgba"
 
 
 def _collect_images(source_dir: str):
@@ -81,23 +92,7 @@ def _trim_to_alpha_bounds(img: Image.Image) -> Image.Image:
 				count += 1
 		return (count / float(w)) * 100.0 if w > 0 else 0.0
 
-	if ALPHA_HARD_TRIM:
-		min_x = 0
-		while min_x < w and alpha_percent_for_col(min_x) <= ALPHA_HARD_TRIM_PERCENT:
-			min_x += 1
-
-		max_x = w - 1
-		while max_x >= min_x and alpha_percent_for_col(max_x) <= ALPHA_HARD_TRIM_PERCENT:
-			max_x -= 1
-
-		min_y = 0
-		while min_y < h and alpha_percent_for_row(min_y) <= ALPHA_HARD_TRIM_PERCENT:
-			min_y += 1
-
-		max_y = h - 1
-		while max_y >= min_y and alpha_percent_for_row(max_y) <= ALPHA_HARD_TRIM_PERCENT:
-			max_y -= 1
-	else:
+	def loose_alpha_bounds():
 		min_x = w
 		min_y = h
 		max_x = -1
@@ -115,6 +110,34 @@ def _trim_to_alpha_bounds(img: Image.Image) -> Image.Image:
 					if y > max_y:
 						max_y = y
 
+		return min_x, min_y, max_x, max_y
+
+	if ALPHA_HARD_TRIM:
+		required_fill_percent = max(0.0, min(100.0, 100.0 - ALPHA_HARD_TRIM_PERCENT))
+
+		min_x = 0
+		while min_x < w and alpha_percent_for_col(min_x) < required_fill_percent:
+			min_x += 1
+
+		max_x = w - 1
+		while max_x >= min_x and alpha_percent_for_col(max_x) < required_fill_percent:
+			max_x -= 1
+
+		min_y = 0
+		while min_y < h and alpha_percent_for_row(min_y) < required_fill_percent:
+			min_y += 1
+
+		max_y = h - 1
+		while max_y >= min_y and alpha_percent_for_row(max_y) < required_fill_percent:
+			max_y -= 1
+
+		# Some images never reach the required edge fill rate, especially at 100%.
+		# Fall back to loose alpha bounds instead of returning an empty crop.
+		if min_x >= w or min_y >= h or max_x < min_x or max_y < min_y:
+			min_x, min_y, max_x, max_y = loose_alpha_bounds()
+	else:
+		min_x, min_y, max_x, max_y = loose_alpha_bounds()
+
 	if max_x < 0 or max_y < 0:
 		return img.copy()
 
@@ -122,7 +145,66 @@ def _trim_to_alpha_bounds(img: Image.Image) -> Image.Image:
 	top = max(0, min_y - TRIM_KEEP)
 	right = min(w, max_x + 1 + TRIM_KEEP)
 	bottom = min(h, max_y + 1 + TRIM_KEEP)
+
+	if left >= right or top >= bottom:
+		return img.copy()
+
 	return img.crop((left, top, right, bottom))
+
+
+def _edge_band_mask(img: Image.Image, width: int) -> Image.Image:
+	alpha = img.getchannel("A")
+	src = alpha.load()
+	w, h = img.size
+	mask = Image.new("L", (w, h), 0)
+	mask_pix = mask.load()
+
+	for y in range(h):
+		for x in range(w):
+			if src[x, y] <= 0:
+				continue
+
+			near_boundary = False
+			for dy in range(-width, width + 1):
+				ny = y + dy
+				if ny < 0 or ny >= h:
+					near_boundary = True
+					break
+				for dx in range(-width, width + 1):
+					nx = x + dx
+					if nx < 0 or nx >= w:
+						near_boundary = True
+						break
+					if src[nx, ny] <= 0:
+						near_boundary = True
+						break
+				if near_boundary:
+					break
+
+			if near_boundary:
+				mask_pix[x, y] = 255
+
+	return mask
+
+
+def _apply_edge_blur(img: Image.Image) -> Image.Image:
+	if not EDGE_BLUR or EDGE_BLUR_RADIUS <= 0 or EDGE_BLUR_WIDTH <= 0:
+		return img
+
+	edge_mask = _edge_band_mask(img, EDGE_BLUR_WIDTH)
+	original_alpha = img.getchannel("A")
+
+	if EDGE_BLUR_MODE == "alpha":
+		blurred_alpha = original_alpha.filter(ImageFilter.GaussianBlur(radius=EDGE_BLUR_RADIUS))
+		out = img.copy()
+		out.putalpha(Image.composite(blurred_alpha, original_alpha, edge_mask))
+		return out
+
+	if EDGE_BLUR_MODE == "rgba":
+		blurred = img.filter(ImageFilter.GaussianBlur(radius=EDGE_BLUR_RADIUS))
+		return Image.composite(blurred, img, edge_mask)
+
+	raise ValueError(f"Unknown EDGE_BLUR_MODE: {EDGE_BLUR_MODE}")
 
 
 def _expand_canvas(img: Image.Image, padding: int) -> Image.Image:
@@ -177,9 +259,18 @@ def _extrude_edges(img: Image.Image, padding: int) -> Image.Image:
 			if dist[ny][nx] != -1:
 				continue
 
-			dist[ny][nx] = base_dist + 1
+			new_dist = base_dist + 1
+			dist[ny][nx] = new_dist
 			seed_color[ny][nx] = color
-			pix[nx, ny] = color
+
+			r, g, b, a = color
+			if SOFT_EXTRUDE_ALPHA:
+				falloff = max(0.0, 1.0 - (new_dist / float(padding + 1)))
+				alpha = min(a, int(round(SOFT_EXTRUDE_MAX_ALPHA * falloff)))
+				pix[nx, ny] = (r, g, b, alpha)
+			else:
+				pix[nx, ny] = color
+
 			queue.append((nx, ny))
 
 	return out
@@ -188,6 +279,7 @@ def _extrude_edges(img: Image.Image, padding: int) -> Image.Image:
 def process_image(path: Path, out_dir: Path, padding: int):
 	original = Image.open(path).convert("RGBA")
 	trimmed = _trim_to_alpha_bounds(original)
+	trimmed = _apply_edge_blur(trimmed)
 
 	trim_dir = Path(OUT_TRIM_DIR)
 	trim_dir.mkdir(parents=True, exist_ok=True)
