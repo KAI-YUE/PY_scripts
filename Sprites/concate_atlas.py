@@ -9,7 +9,8 @@ from PIL import Image
 # CONFIG (edit these)
 # ----------------------------
 root_dir = "/mnt/ssd/HMeshi/_0_card_design/card_suit_icons/tmp/"
-root_dir = "/mnt/ssd/HMeshi/_0_card_design/_1_cardback_geom_abstract/export/cards_antialias/"
+root_dir = "/mnt/ssd/HMeshi/_0_card_design/_1_cardback_geom_abstract/colorful_design/cards_gradient_band/"
+root_dir = "/mnt/ssd/HMeshi/_0_card_design/_1_cardback_geom_abstract/export/cards_gradient_band/"
 name = "suits"
 name = "cards"
 # name = "pawns"
@@ -37,7 +38,7 @@ INPUT_EXTRUDED_PADDING = 4
 RESIZE_MODE = "fit_long_edge"		# "none" | "scale" | "fit_long_edge" | "fit_box"
 SCALE = 0.5							# used when RESIZE_MODE == "scale"
 TARGET_LONG_EDGE = 32				# used when RESIZE_MODE == "fit_long_edge"
-TARGET_LONG_EDGE = 90				
+TARGET_LONG_EDGE = 512				
 # TARGET_LONG_EDGE = 128
 # TARGET_LONG_EDGE = 256
 # TARGET_LONG_EDGE = 512
