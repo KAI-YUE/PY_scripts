@@ -11,13 +11,16 @@ from PIL import Image
 root_dir = "/mnt/ssd/HMeshi/_0_card_design/card_suit_icons/tmp/"
 root_dir = "/mnt/ssd/HMeshi/_0_card_design/_1_cardback_geom_abstract/colorful_design/cards_gradient_band/"
 root_dir = "/mnt/ssd/HMeshi/_0_card_design/_2_card_suit_icons/suits/export/"
+root_dir = "/mnt/ssd/HMeshi/_0_card_design/_1_cardback_geom_abstract/export/cards_gradient_band/"
+root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/grass/tiles/"
 name = "suits"
-# name = "cards"
+name = "cards"
 # name = "pawns"
 # name = "meshi"
 # name = "machi"
 # name = "grass"
 # name = "map"
+name = "grass_tiles"
 SOURCE_DIR = os.path.join(root_dir, "./")			# folder with 0.png, 1.png, etc.
 OUT_ATLAS_PNG = os.path.join(root_dir, "./{:s}.png".format(name))
 OUT_ATLAS_JSON = os.path.join(root_dir, "./{:s}.json".format(name))
@@ -39,6 +42,7 @@ RESIZE_MODE = "fit_long_edge"		# "none" | "scale" | "fit_long_edge" | "fit_box"
 SCALE = 0.5							# used when RESIZE_MODE == "scale"
 TARGET_LONG_EDGE = [128]			# used when RESIZE_MODE == "fit_long_edge"
 TARGET_LONG_EDGE = [32, 64, 128, 256]
+TARGET_LONG_EDGE = [300]
 # TARGET_LONG_EDGE = 512				
 # TARGET_LONG_EDGE = 128
 # TARGET_LONG_EDGE = 256
