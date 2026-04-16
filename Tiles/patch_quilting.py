@@ -66,6 +66,7 @@ PIXEL_ART = False
 # Preview output.
 SAVE_TILED_PREVIEW = True
 PREVIEW_REPEAT = 3
+PREVIEW_DIR_NAME = "previews"
 
 # Optional transformed variants from each synthesized tile.
 SAVE_TRANSFORM_VARIANTS = True
@@ -148,7 +149,9 @@ def save_image_and_preview(img, out_path):
     print(f"Wrote: {out_path}")
 
     if SAVE_TILED_PREVIEW:
-        preview_path = out_path.with_name(f"{out_path.stem}_preview{out_path.suffix}")
+        preview_dir = out_path.parent / PREVIEW_DIR_NAME
+        preview_dir.mkdir(parents=True, exist_ok=True)
+        preview_path = preview_dir / f"{out_path.stem}_preview{out_path.suffix}"
         preview = make_tiled_preview(img, repeat=PREVIEW_REPEAT)
         preview.save(preview_path)
         print(f"Wrote: {preview_path}")
@@ -460,7 +463,7 @@ def best_seamless_crop(canvas, crop_w, crop_h, edge, stride):
 def synthesize_one(source_path, dst_dir, index, rng):
     dst_dir.mkdir(parents=True, exist_ok=True)
 
-    out_path = dst_dir / f"{Path(source_path).stem}_quilt_{index:02d}.png"
+    out_path = dst_dir / f"{index:02d}.png"
 
     if out_path.exists() and not OVERWRITE:
         print(f"Skipped existing: {out_path}")
@@ -485,7 +488,7 @@ def synthesize_one(source_path, dst_dir, index, rng):
     if SAVE_TRANSFORM_VARIANTS:
         for transform in TRANSFORMS:
             variant = transform_image(img, transform)
-            variant_path = out_path.with_name(f"{out_path.stem}_{transform}{out_path.suffix}")
+            variant_path = dst_dir / f"{index:02d}_{transform}.png"
             if variant_path.exists() and not OVERWRITE:
                 print(f"Skipped existing: {variant_path}")
                 continue
