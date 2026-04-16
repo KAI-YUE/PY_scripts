@@ -29,7 +29,7 @@ DST_DIR = Path(src_dir, "patch_quilting_output")
 
 OUTPUT_W = 256
 OUTPUT_H = 256
-NUM_OUTPUTS = 4
+NUM_OUTPUTS = 10
 RANDOM_SEED = 1234
 OVERWRITE = True
 
@@ -38,6 +38,20 @@ PATCH_SIZE = 80
 OVERLAP = 28
 CANDIDATES_PER_PATCH = 120
 TOP_K_RANDOM = 8
+
+# Optional transforms applied to candidate patches before scoring/blending.
+# Add "rot" to sample a random angle from ROT_ANGLE_MIN..ROT_ANGLE_MAX.
+USE_PATCH_TRANSFORMS = True
+PATCH_TRANSFORMS = [
+    "orig",
+    # "flip_x",
+    # "flip_y",
+    # "flip_xy",
+    # "rot180",
+    # "rot",
+]
+ROT_ANGLE_MIN = 0.0
+ROT_ANGLE_MAX = 360.0
 
 # Patch paste mode: "hard", "feather", or "poisson".
 # "feather" is usually the best first choice for reducing cut-edge artifacts.
@@ -71,10 +85,11 @@ PREVIEW_DIR_NAME = "previews"
 # Optional transformed variants from each synthesized tile.
 SAVE_TRANSFORM_VARIANTS = True
 TRANSFORMS = [
-    "flip_x",
-    "flip_y",
-    "flip_xy",
-    "rot180",
+    # "flip_x",
+    # "flip_y",
+    # "flip_xy",
+    # "rot180",
+    "rot",
 ]
 
 
@@ -125,7 +140,7 @@ def make_tiled_preview(img, repeat=3):
     return preview
 
 
-def transform_image(img, transform):
+def transform_image(img, transform, rng=None):
     if transform == "orig":
         return img.copy()
     if transform == "flip_x":
@@ -140,8 +155,79 @@ def transform_image(img, transform):
         return img.transpose(Image.Transpose.ROTATE_180)
     if transform == "rot270":
         return img.transpose(Image.Transpose.ROTATE_270)
+    if transform == "rot":
+        if rng is None:
+            rng = np.random.default_rng()
+        angle = rng.uniform(ROT_ANGLE_MIN, ROT_ANGLE_MAX)
+        return rotate_image_center_crop(img, angle)
 
     raise ValueError(f"Unknown transform: {transform}")
+
+
+def rotate_image_center_crop(img, angle):
+    if cv2 is not None:
+        arr = np.array(img.convert("RGB"))
+        h, w, _ = arr.shape
+        center = ((w - 1) * 0.5, (h - 1) * 0.5)
+        matrix = cv2.getRotationMatrix2D(center, float(angle), 1.0)
+        rotated = cv2.warpAffine(
+            arr,
+            matrix,
+            (w, h),
+            flags=cv2.INTER_CUBIC,
+            borderMode=cv2.BORDER_REFLECT_101,
+        )
+        return Image.fromarray(rotated)
+
+    return img.rotate(
+        float(angle),
+        resample=Image.Resampling.BICUBIC,
+        expand=False,
+        fillcolor=tuple(int(v) for v in np.array(img).mean(axis=(0, 1))),
+    )
+
+
+def transform_patch(patch, transform, rng):
+    if transform == "orig":
+        return patch
+    if transform == "flip_x":
+        return np.flip(patch, axis=1)
+    if transform == "flip_y":
+        return np.flip(patch, axis=0)
+    if transform == "flip_xy":
+        return np.flip(np.flip(patch, axis=1), axis=0)
+    if transform == "rot90":
+        return np.rot90(patch, k=1)
+    if transform == "rot180":
+        return np.rot90(patch, k=2)
+    if transform == "rot270":
+        return np.rot90(patch, k=3)
+    if transform == "rot":
+        angle = rng.uniform(ROT_ANGLE_MIN, ROT_ANGLE_MAX)
+        img = to_img(patch)
+        return to_np(rotate_image_center_crop(img, angle))
+
+    raise ValueError(f"Unknown patch transform: {transform}")
+
+
+def random_patch_transform(rng):
+    if not USE_PATCH_TRANSFORMS or not PATCH_TRANSFORMS:
+        return "orig"
+
+    return PATCH_TRANSFORMS[int(rng.integers(0, len(PATCH_TRANSFORMS)))]
+
+
+def required_source_sample_size(patch_size):
+    if USE_PATCH_TRANSFORMS and "rot" in PATCH_TRANSFORMS:
+        return int(np.ceil(patch_size * np.sqrt(2.0)))
+    return patch_size
+
+
+def crop_center_np(arr, size):
+    h, w, _ = arr.shape
+    y = (h - size) // 2
+    x = (w - size) // 2
+    return arr[y:y + size, x:x + size, :]
 
 
 def save_image_and_preview(img, out_path):
@@ -325,9 +411,26 @@ def grid_positions(total, patch_size, step):
 
 def random_source_patch(source, patch_size, rng):
     src_h, src_w, _ = source.shape
-    y = int(rng.integers(0, src_h - patch_size + 1))
-    x = int(rng.integers(0, src_w - patch_size + 1))
-    return source[y:y + patch_size, x:x + patch_size, :]
+    transform = random_patch_transform(rng)
+    sample_size = patch_size
+    if transform == "rot":
+        sample_size = int(np.ceil(patch_size * np.sqrt(2.0)))
+
+    if src_w < sample_size or src_h < sample_size:
+        raise ValueError(
+            f"Source image is too small for transform='{transform}' with "
+            f"sample_size={sample_size}: source is {src_w}x{src_h}"
+        )
+
+    y = int(rng.integers(0, src_h - sample_size + 1))
+    x = int(rng.integers(0, src_w - sample_size + 1))
+    patch = source[y:y + sample_size, x:x + sample_size, :]
+    patch = transform_patch(patch, transform, rng)
+
+    if patch.shape[0] != patch_size or patch.shape[1] != patch_size:
+        patch = crop_center_np(patch, patch_size)
+
+    return patch.copy()
 
 
 def score_patch(patch, target_region, filled_region):
@@ -396,9 +499,11 @@ def paste_patch(output, filled, patch, x, y, overlap):
 
 def quilt_texture(source, out_w, out_h, patch_size, overlap, rng):
     src_h, src_w, _ = source.shape
-    if src_w < patch_size or src_h < patch_size:
+    sample_size = required_source_sample_size(patch_size)
+    if src_w < sample_size or src_h < sample_size:
         raise ValueError(
-            f"Source image is too small for PATCH_SIZE={patch_size}: "
+            f"Source image is too small for PATCH_SIZE={patch_size} "
+            f"and required sample size {sample_size}: "
             f"source is {src_w}x{src_h}"
         )
     if overlap <= 0 or overlap >= patch_size:
@@ -487,11 +592,12 @@ def synthesize_one(source_path, dst_dir, index, rng):
 
     if SAVE_TRANSFORM_VARIANTS:
         for transform in TRANSFORMS:
-            variant = transform_image(img, transform)
-            variant_path = dst_dir / f"{index:02d}_{transform}.png"
-            if variant_path.exists() and not OVERWRITE:
-                print(f"Skipped existing: {variant_path}")
-                continue
+            variant = transform_image(img, transform, rng)
+            # variant_path = dst_dir / f"{index:02d}_{transform}.png"
+            variant_path = Path(dst_dir) / f"{index:02d}.png"
+			# if variant_path.exists() and not OVERWRITE:
+            #     print(f"Skipped existing: {variant_path}")
+            #     continue
             save_image_and_preview(variant, variant_path)
 
     return out_path

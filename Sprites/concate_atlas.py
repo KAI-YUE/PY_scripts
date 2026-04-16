@@ -9,10 +9,7 @@ from PIL import Image
 # CONFIG (edit these)
 # ----------------------------
 root_dir = "/mnt/ssd/HMeshi/_0_card_design/card_suit_icons/tmp/"
-root_dir = "/mnt/ssd/HMeshi/_0_card_design/_1_cardback_geom_abstract/colorful_design/cards_gradient_band/"
-root_dir = "/mnt/ssd/HMeshi/_0_card_design/_2_card_suit_icons/suits/export/"
-root_dir = "/mnt/ssd/HMeshi/_0_card_design/_1_cardback_geom_abstract/export/cards_gradient_band/"
-root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/grass/tiles/patch_quilting_output/"
+root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/grass/tiles/tiles/"
 name = "suits"
 name = "cards"
 # name = "pawns"
