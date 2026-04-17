@@ -24,12 +24,12 @@ except ImportError:
 
 src_dir = "/mnt/ssd/HMeshi/-1_field_landscape/grass/tiles/"
 
-SOURCE_PATH = Path(src_dir, "t1.png")
+SOURCE_PATH = Path(src_dir, "tt3.png")
 DST_DIR = Path(src_dir, "patch_quilting_output")
 
 OUTPUT_W = 256
 OUTPUT_H = 256
-NUM_OUTPUTS = 10
+NUM_OUTPUTS = 4
 RANDOM_SEED = 1234
 OVERWRITE = True
 
@@ -48,7 +48,7 @@ PATCH_TRANSFORMS = [
     # "flip_y",
     # "flip_xy",
     # "rot180",
-    # "rot",
+    "rot",
 ]
 ROT_ANGLE_MIN = 0.0
 ROT_ANGLE_MAX = 360.0
@@ -83,7 +83,7 @@ PREVIEW_REPEAT = 3
 PREVIEW_DIR_NAME = "previews"
 
 # Optional transformed variants from each synthesized tile.
-SAVE_TRANSFORM_VARIANTS = True
+SAVE_TRANSFORM_VARIANTS = False
 TRANSFORMS = [
     # "flip_x",
     # "flip_y",
@@ -593,11 +593,10 @@ def synthesize_one(source_path, dst_dir, index, rng):
     if SAVE_TRANSFORM_VARIANTS:
         for transform in TRANSFORMS:
             variant = transform_image(img, transform, rng)
-            # variant_path = dst_dir / f"{index:02d}_{transform}.png"
-            variant_path = Path(dst_dir) / f"{index:02d}.png"
-			# if variant_path.exists() and not OVERWRITE:
-            #     print(f"Skipped existing: {variant_path}")
-            #     continue
+            variant_path = Path(dst_dir) / f"{index:02d}_{transform}.png"
+            if variant_path.exists() and not OVERWRITE:
+                print(f"Skipped existing: {variant_path}")
+                continue
             save_image_and_preview(variant, variant_path)
 
     return out_path
