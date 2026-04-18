@@ -3,6 +3,7 @@
         "cardback",
         "figsize",
         "fromarray",
+        "getchannel",
         "henshin",
         "imshow",
         "machi",

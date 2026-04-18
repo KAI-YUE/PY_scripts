@@ -9,7 +9,7 @@ from PIL import Image
 # CONFIG (edit these)
 # ----------------------------
 root_dir = "/mnt/ssd/HMeshi/_0_card_design/card_suit_icons/tmp/"
-root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/grass/exported/"
+root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/grass/exported/grass_dec_alpha_edge_fade/"
 name = "suits"
 name = "cards"
 # name = "pawns"
@@ -18,6 +18,7 @@ name = "cards"
 # name = "grass"
 # name = "map"
 name = "grass_tiles"
+name = "grass_dec"
 SOURCE_DIR = os.path.join(root_dir, "./")			# folder with 0.png, 1.png, etc.
 OUT_ATLAS_PNG = os.path.join(root_dir, "./{:s}.png".format(name))
 OUT_ATLAS_JSON = os.path.join(root_dir, "./{:s}.json".format(name))
@@ -37,6 +38,7 @@ INPUT_EXTRUDED_PADDING = 4
 # ADD TO CONFIG
 # ----------------------------
 RESIZE_MODE = "fit_long_edge"		# "none" | "scale" | "fit_long_edge" | "fit_box"
+RESIZE_MODE = "none"
 SCALE = 0.5							# used when RESIZE_MODE == "scale"
 TARGET_LONG_EDGE = [128]			# used when RESIZE_MODE == "fit_long_edge"
 TARGET_LONG_EDGE = [32, 64, 128, 256]
