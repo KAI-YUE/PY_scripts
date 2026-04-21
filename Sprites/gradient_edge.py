@@ -8,7 +8,7 @@ from PIL import Image
 # CONFIG
 # ----------------------------
 root_dir = "/mnt/ssd/HMeshi/_0_card_design/_1_cardback_geom_abstract/colorful_design/"
-root_dir = "/mnt/ssd/HMeshi/_0_card_design/_1_cardback_geom_abstract/export/"
+root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/rocks_stuff/export/"
 name = "cards"
 
 SOURCE_DIR = os.path.join(root_dir, "./")
@@ -16,7 +16,8 @@ OUT_DIR = os.path.join(root_dir, f"./{name}_gradient_band/")
 
 INCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 ALPHA_THRESHOLD = 1
-GRADIENT_BAND_PERCENT = 2
+# GRADIENT_BAND_PERCENT = 2
+GRADIENT_BAND_PERCENT = 1
 OVERWRITE = True
 EDGE_TINT_ENABLED = True
 EDGE_TINT_COLOR = (200, 210, 230)

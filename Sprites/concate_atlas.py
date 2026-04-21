@@ -9,7 +9,7 @@ from PIL import Image
 # CONFIG (edit these)
 # ----------------------------
 root_dir = "/mnt/ssd/HMeshi/_0_card_design/card_suit_icons/tmp/"
-root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/grass/exported/grass_dec_alpha_edge_fade/"
+root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/terrain/"
 name = "suits"
 name = "cards"
 # name = "pawns"
@@ -19,14 +19,15 @@ name = "cards"
 # name = "map"
 name = "grass_tiles"
 name = "grass_dec"
+name = "terrain"
 SOURCE_DIR = os.path.join(root_dir, "./")			# folder with 0.png, 1.png, etc.
 OUT_ATLAS_PNG = os.path.join(root_dir, "./{:s}.png".format(name))
 OUT_ATLAS_JSON = os.path.join(root_dir, "./{:s}.json".format(name))
 
 INCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 MAX_ATLAS_WIDTH = 2048					# typical: 1024/2048/4096
-MAX_ATLAS_WIDTH = 1024					# typical: 1024/2048/4096
-PADDING = 2								# space between sprites to avoid bleeding
+# MAX_ATLAS_WIDTH = 1024					# typical: 1024/2048/4096
+PADDING = 7							# space between sprites to avoid bleeding
 SORT_MODE = "name"					# "name" | "height" | "area"
 POWER_OF_TWO = False					# round atlas size up to next power of two
 INPUT_HAS_EXTRUDED_PADDING = True
@@ -43,10 +44,7 @@ SCALE = 0.5							# used when RESIZE_MODE == "scale"
 TARGET_LONG_EDGE = [128]			# used when RESIZE_MODE == "fit_long_edge"
 TARGET_LONG_EDGE = [32, 64, 128, 256]
 TARGET_LONG_EDGE = [ 100 ]
-# TARGET_LONG_EDGE = 512				
-# TARGET_LONG_EDGE = 128
-# TARGET_LONG_EDGE = 256
-# TARGET_LONG_EDGE = 512
+
 TARGET_W = 1024						# used when RESIZE_MODE == "fit_box"
 TARGET_H = 1024						# used when RESIZE_MODE == "fit_box"
 PIXEL_ART = False					# True -> NEAREST, 

@@ -7,8 +7,9 @@ from PIL import Image, ImageFilter
 # ----------------------------
 # CONFIG
 # ----------------------------
-root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/grass/exported/"
+root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/rocks_stuff/export/"
 name = "grass_dec"
+name = "tree_terrain"
 
 SOURCE_DIR = os.path.join(root_dir, "./")
 OUT_DEBUG_DIR = os.path.join(root_dir, f"./{name}_alpha_edge_debug/")
