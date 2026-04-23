@@ -7,27 +7,29 @@ import re
 import json
 from pathlib import Path
 from collections import defaultdict
-from PIL import Image, ImageDraw, ImageFont
+from collections import deque
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 # --------------------------------------------------
 # CONFIG
 # --------------------------------------------------
-font_dir = "/home/kyue/Documents/fonts/"
-FONT_DIR = os.path.join(font_dir, "Bearpaw")      # folder containing .ttf/.otf
+font_dir  = "/home/kyue/Documents/fonts/"
+FONT_DIR  = os.path.join(font_dir, "Bearpaw")      # folder containing .ttf/.otf
 FONT_FILE = None						         # None = auto-pick first font in folder, or set e.g. "MyFont.ttf"
 
-SUIT_DIR = r"/mnt/ssd/HMeshi/_0_card_design/card_suit_icons/tmp"					# folder with suit icons, e.g. _1_fire.png, _6_diamond.png
+SUIT_DIR = r"/mnt/ssd/HMeshi/_0_card_design/_2_card_suit_icons/suits/10suits/"
+# SUIT_DIR = r"/mnt/ssd/HMeshi/_0_card_design/_2_card_suit_icons/suits/test"					# folder with suit icons, e.g. _1_fire.png, _6_diamond.png
 OUT_PNG = r"/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/hm/card/ranks/ranks.png"
 OUT_JSON = r"/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/hm/card/ranks/ranks.json"
 
 CHARS =  ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "X", "V"]			# 12 columns
-CELL_W = 20
-CELL_H = 20
+CELL_W = 150
+CELL_H = 150
 TEN_GAP = int(-14)
 TEN_GAP = int(-3)
-CELL_PADDING = 2						# spacing inside each cell around glyph (visual margin)
+CELL_PADDING = 5						 # spacing inside each cell around glyph (visual margin)
 # FONT_SIZE = 30							# base font size before supersampling
-FONT_SIZE = 50
+FONT_SIZE = 300
 TEN_DENT = 1
 SUPERSAMPLE = 2							# 1 = direct render, 2 = smoother downscale
 BG_TRANSPARENT = True
@@ -36,24 +38,42 @@ BG_TRANSPARENT = True
 MIN_ALPHA_FOR_SAMPLE = 24				# ignore very transparent pixels
 IGNORE_DARK_OUTLINES = True				# helps if suit icons have black outlines
 DARK_THRESHOLD = 40						# pixels darker than this may be ignored
-QUANT_BITS = 4							# color quantization for "dominant" color (4 bits => buckets of 16)
+QUANT_BITS = 1							# color quantization for "dominant" color (4 bits => buckets of 16)
 ALPHA_WEIGHTED = True
-
-# Rank styling
-ADD_STROKE = False						# optional outline
-STROKE_WIDTH = 2						# in final pixels (auto scaled by SUPERSAMPLE)
-STROKE_FILL = (0, 0, 0, 255)
 
 # Rendering mode
 PIXEL_STYLE = False						# True => NEAREST downscale, False => LANCZOS
 CENTER_GLYPH = True
 
+PRE_BLUR_ENABLED = False				# apply Gaussian blur to glyph before protective-edge postprocessing
+PRE_BLUR_ENABLED = True
+PRE_BLUR_RADIUS = 1					# radius in final pixels; internally scaled by SUPERSAMPLE
+PRE_BLUR_KEEP_SOLID_COLOR = True		# blur alpha, then repaint glyph with one flat color
+
+# Protective edge / gradient band
+PROTECTIVE_EDGE_ENABLED = True
+# PROTECTIVE_EDGE_ENABLED = False
+EDGE_DIRECTION = "outward"				# "outward" | "inward"
+EDGE_BAND_PERCENT = 3.0					# percent of glyph short edge
+EDGE_ALPHA_THRESHOLD = 1
+OUTWARD_CORE_ALPHA_THRESHOLD = 96		# harden antialiased glyph edge before outward fade
+
+OUTWARD_USE_EDGE_TINT_COLOR = False		# True => outward fade uses EDGE_TINT_COLOR instead of sampled suit color
+# OUTWARD_USE_EDGE_TINT_COLOR = True
+OUTWARD_FADE_TARGET_COLOR = (255, 255, 255, 0)	# RGB target that outward band fades toward
+
+EDGE_TINT_ENABLED = True
+EDGE_TINT_COLOR = (200, 210, 230)
+EDGE_TINT_STRENGTH = 0.45
+INWARD_ALPHA_FLOOR = 96
+INWARD_TINT_BIAS = 0.55
+
 # Optional manual overrides if a sampled color is not what you want
 # Keys should match the parsed suit key (e.g. "fire", "diamond")
 MANUAL_COLORS = {
-	# "diamond": (220, 20, 60, 255),
+	"diamond": (220, 20, 60, 255),
 	"water": (82, 180, 180, 255),
-	"smoke": (109, 109, 109, 255),
+	# "smoke": (109, 109, 109, 255),
 }
 
 INCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
@@ -210,6 +230,277 @@ def _cell_width_for_char(ch: str, base_w: int) -> int:
 	return base_w
 
 
+def _alpha_bounds(img: Image.Image):
+	alpha = img.getchannel("A")
+	pix = alpha.load()
+	w, h = img.size
+	min_x = w
+	min_y = h
+	max_x = -1
+	max_y = -1
+
+	for y in range(h):
+		for x in range(w):
+			if pix[x, y] < EDGE_ALPHA_THRESHOLD:
+				continue
+			if x < min_x:
+				min_x = x
+			if y < min_y:
+				min_y = y
+			if x > max_x:
+				max_x = x
+			if y > max_y:
+				max_y = y
+
+	return min_x, min_y, max_x, max_y
+
+
+def _band_width_px(img: Image.Image) -> int:
+	min_x, min_y, max_x, max_y = _alpha_bounds(img)
+	if max_x < 0 or max_y < 0:
+		return 0
+
+	content_w = max_x - min_x + 1
+	content_h = max_y - min_y + 1
+	short_edge = min(content_w, content_h)
+	return max(1, int(round(short_edge * EDGE_BAND_PERCENT / 100.0)))
+
+
+def _harden_alpha(img: Image.Image, threshold: int) -> Image.Image:
+	w, h = img.size
+	src = img.convert("RGBA")
+	src_pix = src.load()
+	out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+	out_pix = out.load()
+
+	for y in range(h):
+		for x in range(w):
+			r, g, b, a = src_pix[x, y]
+			if a >= threshold:
+				out_pix[x, y] = (r, g, b, 255)
+
+	return out
+
+
+def _apply_pre_blur(img: Image.Image, fill_rgba = None) -> Image.Image:
+	if not PRE_BLUR_ENABLED:
+		return img
+
+	ss = max(1, int(SUPERSAMPLE))
+	radius = max(0.0, float(PRE_BLUR_RADIUS)) * ss
+	if radius <= 0.0:
+		return img
+
+	blurred = img.filter(ImageFilter.GaussianBlur(radius=radius))
+	if not PRE_BLUR_KEEP_SOLID_COLOR or fill_rgba is None:
+		return blurred
+
+	alpha = blurred.getchannel("A")
+	out = Image.new("RGBA", blurred.size, (0, 0, 0, 0))
+	solid = (
+		int(fill_rgba[0]),
+		int(fill_rgba[1]),
+		int(fill_rgba[2]),
+		255,
+	)
+	out.paste(solid, (0, 0), alpha)
+	return out
+
+
+def _apply_inward_gradient_band(img: Image.Image) -> tuple[Image.Image, int]:
+	alpha = img.getchannel("A")
+	src = alpha.load()
+	w, h = img.size
+	band_px = _band_width_px(img)
+
+	if band_px <= 0:
+		return img.copy(), 0
+
+	dist = [[-1 for _ in range(w)] for _ in range(h)]
+	queue = deque()
+
+	def is_inside(x: int, y: int) -> bool:
+		return src[x, y] >= EDGE_ALPHA_THRESHOLD
+
+	neighbors = (
+		(-1, -1), (0, -1), (1, -1),
+		(-1,  0),          (1,  0),
+		(-1,  1), (0,  1), (1,  1),
+	)
+
+	for y in range(h):
+		for x in range(w):
+			if not is_inside(x, y):
+				continue
+
+			is_boundary = False
+			for dx, dy in neighbors:
+				nx = x + dx
+				ny = y + dy
+				if nx < 0 or ny < 0 or nx >= w or ny >= h or not is_inside(nx, ny):
+					is_boundary = True
+					break
+
+			if is_boundary:
+				dist[y][x] = 0
+				queue.append((x, y))
+
+	while queue:
+		x, y = queue.popleft()
+		base_dist = dist[y][x]
+		if base_dist >= band_px - 1:
+			continue
+
+		for dx, dy in neighbors:
+			nx = x + dx
+			ny = y + dy
+			if nx < 0 or ny < 0 or nx >= w or ny >= h:
+				continue
+			if not is_inside(nx, ny):
+				continue
+			if dist[ny][nx] != -1:
+				continue
+
+			dist[ny][nx] = base_dist + 1
+			queue.append((nx, ny))
+
+	out = img.copy()
+	out_pix = out.load()
+	alpha_out = out.getchannel("A")
+	out_alpha = alpha_out.load()
+
+	for y in range(h):
+		for x in range(w):
+			d = dist[y][x]
+			if d == -1:
+				continue
+
+			falloff = float(d + 1) / float(band_px)
+			target_alpha = max(
+				0,
+				min(255, int(round(INWARD_ALPHA_FLOOR + (255 - INWARD_ALPHA_FLOOR) * falloff)))
+			)
+			out_alpha[x, y] = min(out_alpha[x, y], target_alpha)
+
+			if EDGE_TINT_ENABLED:
+				edge_mix = max(0.0, min(1.0, 1.0 - (d / float(max(1, band_px - 1)))))
+				edge_mix = max(0.0, min(1.0, edge_mix + INWARD_TINT_BIAS * (1.0 - edge_mix)))
+				mix = EDGE_TINT_STRENGTH * edge_mix
+				r, g, b, a = out_pix[x, y]
+				tr, tg, tb = EDGE_TINT_COLOR
+				out_pix[x, y] = (
+					int(round(r * (1.0 - mix) + tr * mix)),
+					int(round(g * (1.0 - mix) + tg * mix)),
+					int(round(b * (1.0 - mix) + tb * mix)),
+					a,
+				)
+
+	out.putalpha(alpha_out)
+	return out, band_px
+
+
+def _apply_outward_gradient_band(img: Image.Image, edge_rgb = None) -> tuple[Image.Image, int]:
+	if OUTWARD_USE_EDGE_TINT_COLOR:
+		edge_rgb = EDGE_TINT_COLOR
+	elif edge_rgb is None:
+		edge_rgb = EDGE_TINT_COLOR
+
+	core = _harden_alpha(img, OUTWARD_CORE_ALPHA_THRESHOLD)
+	band_px = _band_width_px(core)
+	if band_px <= 0:
+		return img.copy(), 0
+
+	alpha = core.getchannel("A")
+	src = alpha.load()
+	out = core.copy()
+	out_pix = out.load()
+	alpha_out = alpha.copy()
+	out_alpha = alpha_out.load()
+	w, h = out.size
+
+	dist = [[-1 for _ in range(w)] for _ in range(h)]
+	queue = deque()
+
+	def is_inside(x: int, y: int) -> bool:
+		return src[x, y] >= EDGE_ALPHA_THRESHOLD
+
+	neighbors = (
+		(-1, -1), (0, -1), (1, -1),
+		(-1,  0),          (1,  0),
+		(-1,  1), (0,  1), (1,  1),
+	)
+
+	for y in range(h):
+		for x in range(w):
+			if not is_inside(x, y):
+				continue
+
+			is_boundary = False
+			for dx, dy in neighbors:
+				nx = x + dx
+				ny = y + dy
+				if nx < 0 or ny < 0 or nx >= w or ny >= h or not is_inside(nx, ny):
+					is_boundary = True
+					break
+
+			if is_boundary:
+				dist[y][x] = 0
+				queue.append((x, y))
+
+	while queue:
+		x, y = queue.popleft()
+		base_dist = dist[y][x]
+		if base_dist >= band_px:
+			continue
+
+		for dx, dy in neighbors:
+			nx = x + dx
+			ny = y + dy
+			if nx < 0 or ny < 0 or nx >= w or ny >= h:
+				continue
+			if is_inside(nx, ny):
+				continue
+			if dist[ny][nx] != -1:
+				continue
+
+			dist[ny][nx] = base_dist + 1
+			queue.append((nx, ny))
+
+	sr, sg, sb = edge_rgb[:3]
+	tr, tg, tb = OUTWARD_FADE_TARGET_COLOR[:3]
+	for y in range(h):
+		for x in range(w):
+			d = dist[y][x]
+			if d <= 0 or d > band_px:
+				continue
+
+			falloff = max(0.0, 1.0 - (d / float(band_px + 1)))
+			inv = 1.0 - falloff
+			r = max(0, min(255, int(round(sr * falloff + tr * inv))))
+			g = max(0, min(255, int(round(sg * falloff + tg * inv))))
+			b = max(0, min(255, int(round(sb * falloff + tb * inv))))
+			alpha_value = max(0, min(255, int(round(255 * falloff))))
+
+			if alpha_value > out_alpha[x, y]:
+				out_pix[x, y] = (r, g, b, alpha_value)
+				out_alpha[x, y] = alpha_value
+
+	out.putalpha(alpha_out)
+	return out, band_px
+
+
+def _apply_protective_edge(img: Image.Image, edge_rgb = None) -> Image.Image:
+	if not PROTECTIVE_EDGE_ENABLED:
+		return img
+	if EDGE_DIRECTION == "inward":
+		out, _ = _apply_inward_gradient_band(img)
+		return out
+	if EDGE_DIRECTION == "outward":
+		out, _ = _apply_outward_gradient_band(img, edge_rgb=edge_rgb)
+		return out
+	raise ValueError(f"Unknown EDGE_DIRECTION: {EDGE_DIRECTION}")
+
+
 def _render_glyph_cell(ch: str, font, color_rgba, cell_w: int, cell_h: int):
 	ss = max(1, int(SUPERSAMPLE))
 	cell_w = _cell_width_for_char(ch, cell_w)
@@ -224,8 +515,8 @@ def _render_glyph_cell(ch: str, font, color_rgba, cell_w: int, cell_h: int):
 	if ch == "10":
 		gap = TEN_GAP	# tighten spacing; tweak: -1, -2, -3
 
-		bbox1 = draw.textbbox((0, 0), "1", font=font, stroke_width=(STROKE_WIDTH * ss if ADD_STROKE else 0))
-		bbox0 = draw.textbbox((0, 0), "0", font=font, stroke_width=(STROKE_WIDTH * ss if ADD_STROKE else 0))
+		bbox1 = draw.textbbox((0, 0), "1", font=font)
+		bbox0 = draw.textbbox((0, 0), "0", font=font)
 
 		w1 = bbox1[2] - bbox1[0]
 		h1 = bbox1[3] - bbox1[1]
@@ -246,9 +537,6 @@ def _render_glyph_cell(ch: str, font, color_rgba, cell_w: int, cell_h: int):
 			"fill": color_rgba,
 			"font": font,
 		}
-		if ADD_STROKE:
-			kwargs["stroke_width"] = STROKE_WIDTH * ss
-			kwargs["stroke_fill"] = STROKE_FILL
 
 		draw.text((tx - bbox1[0], ty - bbox1[1]), "1", **kwargs)
 		draw.text((tx + w1 + gap - bbox0[0], ty - bbox0[1]), "0", **kwargs)
@@ -257,13 +545,16 @@ def _render_glyph_cell(ch: str, font, color_rgba, cell_w: int, cell_h: int):
 			resample = Image.Resampling.NEAREST if PIXEL_STYLE else Image.Resampling.LANCZOS
 			cell = cell.resize((cell_w, cell_h), resample=resample)
 
-		return cell
+		cell = _apply_pre_blur(cell, fill_rgba=color_rgba)
+		return _apply_protective_edge(cell, edge_rgb=color_rgba)
 
 	# Measure glyph bbox
 	# Use anchorless bbox and center manually for predictable output.
-	bbox = draw.textbbox((0, 0), ch, font=font, stroke_width=(STROKE_WIDTH * ss if ADD_STROKE else 0))
+	bbox = draw.textbbox((0, 0), ch, font=font)
 	if bbox is None:
-		return cell.resize((cell_w, cell_h), Image.Resampling.NEAREST if PIXEL_STYLE else Image.Resampling.LANCZOS)
+		cell = cell.resize((cell_w, cell_h), Image.Resampling.NEAREST if PIXEL_STYLE else Image.Resampling.LANCZOS)
+		cell = _apply_pre_blur(cell, fill_rgba=color_rgba)
+		return _apply_protective_edge(cell, edge_rgb=color_rgba)
 
 	bw = bbox[2] - bbox[0]
 	bh = bbox[3] - bbox[1]
@@ -279,9 +570,6 @@ def _render_glyph_cell(ch: str, font, color_rgba, cell_w: int, cell_h: int):
 		"fill": color_rgba,
 		"font": font,
 	}
-	if ADD_STROKE:
-		kwargs["stroke_width"] = STROKE_WIDTH * ss
-		kwargs["stroke_fill"] = STROKE_FILL
 
 	draw.text((tx, ty), ch, **kwargs)
 
@@ -289,7 +577,8 @@ def _render_glyph_cell(ch: str, font, color_rgba, cell_w: int, cell_h: int):
 		resample = Image.Resampling.NEAREST if PIXEL_STYLE else Image.Resampling.LANCZOS
 		cell = cell.resize((cell_w, cell_h), resample=resample)
 
-	return cell
+	cell = _apply_pre_blur(cell, fill_rgba=color_rgba)
+	return _apply_protective_edge(cell, edge_rgb=color_rgba)
 
 def build_rank_sheet():
 	font_path = _find_font_path(FONT_DIR, FONT_FILE)
@@ -345,6 +634,8 @@ def build_rank_sheet():
 			cell = _render_glyph_cell(ch, font, color, cell_w, CELL_H)
 			if ch == "10" and row_i == 0:
 				col_x[col_i] -= TEN_DENT
+			if ch == "X" and row_i == 0:
+				col_x[col_i] += TEN_DENT
 				
 			x = col_x[col_i]
 			sheet.alpha_composite(cell, (x, y))

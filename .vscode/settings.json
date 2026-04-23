@@ -1,5 +1,7 @@
 {
     "cSpell.words": [
+        "anchorless",
+        "Bearpaw",
         "cardback",
         "figsize",
         "fromarray",
@@ -9,6 +11,7 @@
         "machi",
         "Meshi",
         "SPYDER",
+        "textbbox",
         "wbox"
     ]
 }
