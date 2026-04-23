@@ -8,6 +8,7 @@ from PIL import Image, ImageFilter
 # CONFIG
 # ----------------------------
 root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/rocks_stuff/export/"
+root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/trees/exported/"
 name = "grass_dec"
 name = "tree_terrain"
 
