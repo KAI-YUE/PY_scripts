@@ -26,7 +26,6 @@ INPUT_HAS_EXTRUDED_PADDING = True
 INPUT_HAS_EXTRUDED_PADDING = False
 INPUT_EXTRUDED_PADDING = 4
 
-
 # ----------------------------
 # ADD TO CONFIG
 # ----------------------------

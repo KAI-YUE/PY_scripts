@@ -9,7 +9,7 @@ from PIL import Image
 # ----------------------------
 root_dir = "/mnt/ssd/HMeshi/_0_card_design/_1_cardback_geom_abstract/colorful_design/"
 root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/rocks_stuff/export/"
-root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/ui_box/generic/"
+root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/ui_box/_0_generic/"
 name = "wbox"
 
 SOURCE_DIR = os.path.join(root_dir, "./")

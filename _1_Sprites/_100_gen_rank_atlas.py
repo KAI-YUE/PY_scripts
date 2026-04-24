@@ -25,7 +25,6 @@ OUT_JSON = r"/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/hm/card/ranks/ranks.js
 CHARS =  ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "X", "V"]			# 12 columns
 CELL_W = 150
 CELL_H = 150
-TEN_GAP = int(-14)
 TEN_GAP = int(-3)
 CELL_PADDING = 1						 # spacing inside each cell around glyph (visual margin)
 # FONT_SIZE = 30							# base font size before supersampling
@@ -42,11 +41,8 @@ DARK_THRESHOLD = 40						# pixels darker than this may be ignored
 QUANT_BITS = 1							# color quantization for "dominant" color (4 bits => buckets of 16)
 ALPHA_WEIGHTED = True
 
-# Rendering mode
-PIXEL_STYLE = False						# True => NEAREST downscale, False => LANCZOS
 CENTER_GLYPH = True
 
-PRE_BLUR_ENABLED = False				# apply Gaussian blur to glyph before protective-edge postprocessing
 PRE_BLUR_ENABLED = True
 PRE_BLUR_RADIUS = 1					# radius in final pixels; internally scaled by SUPERSAMPLE
 PRE_BLUR_KEEP_SOLID_COLOR = True		# blur alpha, then repaint glyph with one flat color
@@ -59,15 +55,7 @@ EDGE_BAND_PERCENT = 3.0					# percent of glyph short edge
 EDGE_ALPHA_THRESHOLD = 1
 OUTWARD_CORE_ALPHA_THRESHOLD = 96		# harden antialiased glyph edge before outward fade
 
-OUTWARD_USE_EDGE_TINT_COLOR = False		# True => outward fade uses EDGE_TINT_COLOR instead of sampled suit color
-# OUTWARD_USE_EDGE_TINT_COLOR = True
 OUTWARD_FADE_TARGET_COLOR = (255, 255, 255, 0)	# RGB target that outward band fades toward
-
-EDGE_TINT_ENABLED = True
-EDGE_TINT_COLOR = (200, 210, 230)
-EDGE_TINT_STRENGTH = 0.45
-INWARD_ALPHA_FLOOR = 96
-INWARD_TINT_BIAS = 0.55
 
 # Optional manual overrides if a sampled color is not what you want
 # Keys should match the parsed suit key (e.g. "fire", "diamond")
@@ -310,7 +298,6 @@ def _apply_pre_blur(img: Image.Image, fill_rgba = None) -> Image.Image:
 
 def _apply_inward_gradient_band(img: Image.Image) -> tuple[Image.Image, int]:
 	alpha = img.getchannel("A")
-	src = alpha.load()
 	w, h = img.size
 	band_px = _band_width_px(img)
 
@@ -366,7 +353,6 @@ def _apply_inward_gradient_band(img: Image.Image) -> tuple[Image.Image, int]:
 			queue.append((nx, ny))
 
 	out = img.copy()
-	out_pix = out.load()
 	alpha_out = out.getchannel("A")
 	out_alpha = alpha_out.load()
 
@@ -377,35 +363,14 @@ def _apply_inward_gradient_band(img: Image.Image) -> tuple[Image.Image, int]:
 				continue
 
 			falloff = float(d + 1) / float(band_px)
-			target_alpha = max(
-				0,
-				min(255, int(round(INWARD_ALPHA_FLOOR + (255 - INWARD_ALPHA_FLOOR) * falloff)))
-			)
+			target_alpha = max(0, min(255, int(round(255 * falloff))))
 			out_alpha[x, y] = min(out_alpha[x, y], target_alpha)
-
-			if EDGE_TINT_ENABLED:
-				edge_mix = max(0.0, min(1.0, 1.0 - (d / float(max(1, band_px - 1)))))
-				edge_mix = max(0.0, min(1.0, edge_mix + INWARD_TINT_BIAS * (1.0 - edge_mix)))
-				mix = EDGE_TINT_STRENGTH * edge_mix
-				r, g, b, a = out_pix[x, y]
-				tr, tg, tb = EDGE_TINT_COLOR
-				out_pix[x, y] = (
-					int(round(r * (1.0 - mix) + tr * mix)),
-					int(round(g * (1.0 - mix) + tg * mix)),
-					int(round(b * (1.0 - mix) + tb * mix)),
-					a,
-				)
 
 	out.putalpha(alpha_out)
 	return out, band_px
 
 
-def _apply_outward_gradient_band(img: Image.Image, edge_rgb = None) -> tuple[Image.Image, int]:
-	if OUTWARD_USE_EDGE_TINT_COLOR:
-		edge_rgb = EDGE_TINT_COLOR
-	elif edge_rgb is None:
-		edge_rgb = EDGE_TINT_COLOR
-
+def _apply_outward_gradient_band(img: Image.Image) -> tuple[Image.Image, int]:
 	core = _harden_alpha(img, OUTWARD_CORE_ALPHA_THRESHOLD)
 	band_px = _band_width_px(core)
 	if band_px <= 0:
@@ -467,7 +432,7 @@ def _apply_outward_gradient_band(img: Image.Image, edge_rgb = None) -> tuple[Ima
 			dist[ny][nx] = base_dist + 1
 			queue.append((nx, ny))
 
-	sr, sg, sb = edge_rgb[:3]
+	sr, sg, sb = ATLAS_GLYPH_COLOR[:3]
 	tr, tg, tb = OUTWARD_FADE_TARGET_COLOR[:3]
 	for y in range(h):
 		for x in range(w):
@@ -490,14 +455,14 @@ def _apply_outward_gradient_band(img: Image.Image, edge_rgb = None) -> tuple[Ima
 	return out, band_px
 
 
-def _apply_protective_edge(img: Image.Image, edge_rgb = None) -> Image.Image:
+def _apply_protective_edge(img: Image.Image) -> Image.Image:
 	if not PROTECTIVE_EDGE_ENABLED:
 		return img
 	if EDGE_DIRECTION == "inward":
 		out, _ = _apply_inward_gradient_band(img)
 		return out
 	if EDGE_DIRECTION == "outward":
-		out, _ = _apply_outward_gradient_band(img, edge_rgb=edge_rgb)
+		out, _ = _apply_outward_gradient_band(img)
 		return out
 	raise ValueError(f"Unknown EDGE_DIRECTION: {EDGE_DIRECTION}")
 
@@ -543,19 +508,18 @@ def _render_glyph_cell(ch: str, font, color_rgba, cell_w: int, cell_h: int):
 		draw.text((tx + w1 + gap - bbox0[0], ty - bbox0[1]), "0", **kwargs)
 
 		if ss > 1:
-			resample = Image.Resampling.NEAREST if PIXEL_STYLE else Image.Resampling.LANCZOS
-			cell = cell.resize((cell_w, cell_h), resample=resample)
+			cell = cell.resize((cell_w, cell_h), resample=Image.Resampling.LANCZOS)
 
 		cell = _apply_pre_blur(cell, fill_rgba=color_rgba)
-		return _apply_protective_edge(cell, edge_rgb=color_rgba)
+		return _apply_protective_edge(cell)
 
 	# Measure glyph bbox
 	# Use anchorless bbox and center manually for predictable output.
 	bbox = draw.textbbox((0, 0), ch, font=font)
 	if bbox is None:
-		cell = cell.resize((cell_w, cell_h), Image.Resampling.NEAREST if PIXEL_STYLE else Image.Resampling.LANCZOS)
+		cell = cell.resize((cell_w, cell_h), Image.Resampling.LANCZOS)
 		cell = _apply_pre_blur(cell, fill_rgba=color_rgba)
-		return _apply_protective_edge(cell, edge_rgb=color_rgba)
+		return _apply_protective_edge(cell)
 
 	bw = bbox[2] - bbox[0]
 	bh = bbox[3] - bbox[1]
@@ -575,11 +539,10 @@ def _render_glyph_cell(ch: str, font, color_rgba, cell_w: int, cell_h: int):
 	draw.text((tx, ty), ch, **kwargs)
 
 	if ss > 1:
-		resample = Image.Resampling.NEAREST if PIXEL_STYLE else Image.Resampling.LANCZOS
-		cell = cell.resize((cell_w, cell_h), resample=resample)
+		cell = cell.resize((cell_w, cell_h), resample=Image.Resampling.LANCZOS)
 
 	cell = _apply_pre_blur(cell, fill_rgba=color_rgba)
-	return _apply_protective_edge(cell, edge_rgb=color_rgba)
+	return _apply_protective_edge(cell)
 
 def build_rank_sheet():
 	font_path = _find_font_path(FONT_DIR, FONT_FILE)

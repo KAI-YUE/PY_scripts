@@ -44,7 +44,6 @@ SAVE_PROTECTED_RESULT = True
 INSIDE_EDGE_COLOR = (255, 80, 80, 255)
 OUTSIDE_EDGE_COLOR = (80, 200, 255, 255)
 
-
 def _collect_images(source_dir: str):
 	src = Path(source_dir)
 	if not src.exists():
