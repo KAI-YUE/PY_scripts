@@ -8,18 +8,10 @@ from PIL import Image
 # ----------------------------
 # CONFIG (edit these)
 # ----------------------------
-root_dir = "/mnt/ssd/HMeshi/_0_card_design/card_suit_icons/tmp/"
-root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/terrain/"
-name = "suits"
-name = "cards"
-# name = "pawns"
-# name = "meshi"
-# name = "machi"
-# name = "grass"
-# name = "map"
-name = "grass_tiles"
-name = "grass_dec"
-name = "terrain"
+root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/ui_box/_1_icons/ui/"
+# root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/terrain/"
+name = "ui_assets"
+
 SOURCE_DIR = os.path.join(root_dir, "./")			# folder with 0.png, 1.png, etc.
 OUT_ATLAS_PNG = os.path.join(root_dir, "./{:s}.png".format(name))
 OUT_ATLAS_JSON = os.path.join(root_dir, "./{:s}.json".format(name))

@@ -27,12 +27,13 @@ CELL_W = 150
 CELL_H = 150
 TEN_GAP = int(-14)
 TEN_GAP = int(-3)
-CELL_PADDING = 5						 # spacing inside each cell around glyph (visual margin)
+CELL_PADDING = 1						 # spacing inside each cell around glyph (visual margin)
 # FONT_SIZE = 30							# base font size before supersampling
 FONT_SIZE = 300
 TEN_DENT = 1
 SUPERSAMPLE = 2							# 1 = direct render, 2 = smoother downscale
 BG_TRANSPARENT = True
+ATLAS_GLYPH_COLOR = (255, 255, 255, 255)	# neutral atlas color; tint in LOVE at runtime
 
 # Color sampling from suit icons
 MIN_ALPHA_FOR_SAMPLE = 24				# ignore very transparent pixels
@@ -71,7 +72,7 @@ INWARD_TINT_BIAS = 0.55
 # Optional manual overrides if a sampled color is not what you want
 # Keys should match the parsed suit key (e.g. "fire", "diamond")
 MANUAL_COLORS = {
-	"diamond": (220, 20, 60, 255),
+	# "diamond": (220, 20, 60, 255),
 	"water": (82, 180, 180, 255),
 	# "smoke": (109, 109, 109, 255),
 }
@@ -590,7 +591,7 @@ def build_rank_sheet():
 	ss = max(1, int(SUPERSAMPLE))
 	font = _make_font(font_path, FONT_SIZE * ss)
 
-	rows = []
+	suits = []
 	for sp in suit_paths:
 		img = Image.open(sp).convert("RGBA")
 		suit_key = _parse_suit_key(sp.name)
@@ -600,9 +601,9 @@ def build_rank_sheet():
 		else:
 			color = _sample_color_from_icon(img)
 
-		rows.append({ "file": sp.name, "suit_key": suit_key, "color": color })
+		suits.append({ "file": sp.name, "suit_key": suit_key, "color": color })
 
-	n_rows = len(rows)
+	n_suits = len(suits)
 	n_cols = len(CHARS)
 
 	# --------------------------------------------------
@@ -617,7 +618,7 @@ def build_rank_sheet():
 		x_acc += w + CELL_PADDING
 
 	sheet_w = x_acc
-	sheet_h = n_rows * (CELL_H + CELL_PADDING)
+	sheet_h = CELL_H
 
 	bg = (0, 0, 0, 0) if BG_TRANSPARENT else (255, 255, 255, 255)
 	sheet = Image.new("RGBA", (sheet_w, sheet_h), bg)
@@ -625,20 +626,18 @@ def build_rank_sheet():
 	# --------------------------------------------------
 	# Draw sheet
 	# --------------------------------------------------
-	for row_i, row in enumerate(rows):
-		color = tuple(row["color"])
-		y = row_i * (CELL_H + CELL_PADDING)
+	render_color = tuple(ATLAS_GLYPH_COLOR)
+	y = 0
+	for col_i, ch in enumerate(CHARS):
+		cell_w = col_widths[col_i]
+		cell = _render_glyph_cell(ch, font, render_color, cell_w, CELL_H)
+		if ch == "10":
+			col_x[col_i] -= TEN_DENT
+		if ch == "X":
+			col_x[col_i] += 20*TEN_DENT
 
-		for col_i, ch in enumerate(CHARS):
-			cell_w = col_widths[col_i]
-			cell = _render_glyph_cell(ch, font, color, cell_w, CELL_H)
-			if ch == "10" and row_i == 0:
-				col_x[col_i] -= TEN_DENT
-			if ch == "X" and row_i == 0:
-				col_x[col_i] += TEN_DENT
-				
-			x = col_x[col_i]
-			sheet.alpha_composite(cell, (x, y))
+		x = col_x[col_i]
+		sheet.alpha_composite(cell, (x, y))
 
 	out_png = Path(OUT_PNG)
 	out_png.parent.mkdir(parents=True, exist_ok=True)
@@ -648,27 +647,32 @@ def build_rank_sheet():
 	# Save metadata for runtime lookup
 	# --------------------------------------------------
 	meta = {
+		"atlas_color": list(ATLAS_GLYPH_COLOR),
 		"columns": [],
 		"rows": [],
+		"suits": {},
 		"frames": {}
 	}
 
-	# Row metadata + per-frame metadata
-	for row_i, row in enumerate(rows):
+	for suit in suits:
+		suit_key = suit["suit_key"]
+		suit_info = SUIT_INDEX_INFO[suit_key]
+		meta["suits"][suit_key] = {
+			"index": suit_info["index"],
+			# "filename": suit_info["filename"],
+			"color": list(suit["color"]),
+		}
 
-		for col_i, ch in enumerate(CHARS):
-			_s  = row["suit_key"]
-			key = "_{:d}_{:s}:{:s}".format(SUIT_INDEX_INFO[_s]["index"], _s, ch)
-			meta["frames"][key] = {
-				"x": col_x[col_i],
-				"y": row_i * (CELL_H + CELL_PADDING),
-				"w": col_widths[col_i],
-				"h": CELL_H,
-				"suit_key": row["suit_key"],
-				"char": ch,
-				"row": row_i,
-				"col": col_i,
-			}
+	for col_i, ch in enumerate(CHARS):
+		meta["frames"][ch] = {
+			"x": col_x[col_i],
+			"y": 0,
+			"w": col_widths[col_i],
+			"h": CELL_H,
+			"char": ch,
+			"row": 0,
+			"col": col_i,
+		}
 
 	out_json = Path(OUT_JSON)
 	out_json.parent.mkdir(parents=True, exist_ok=True)
@@ -677,7 +681,8 @@ def build_rank_sheet():
 
 	print(f"Wrote sheet: { out_png }")
 	print(f"Wrote meta : { out_json }")
-	print(f"Grid: { n_rows } x { n_cols } (rows x cols)")
+	print(f"Grid: 1 x { n_cols } (rows x cols)")
+	print(f"Suits: { n_suits } stored in JSON")
 	print(f"Variable widths: { col_widths }")
 	
 

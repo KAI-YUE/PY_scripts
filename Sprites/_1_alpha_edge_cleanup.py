@@ -8,7 +8,7 @@ from PIL import Image, ImageFilter
 # CONFIG
 # ----------------------------
 root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/rocks_stuff/export/"
-root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/trees/exported/"
+root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/ui_box/_1_icons/"
 name = "grass_dec"
 name = "tree_terrain"
 
@@ -23,10 +23,10 @@ EDGE_NEIGHBOR_MODE = 8          # 4 or 8
 EDGE_MASK_WIDTH = 1             # debug / visualization band width
 
 FADE_DIRECTION = "inward"      # "outward" | "inward" | "both"
-INWARD_FADE_WIDTH = 2           # fade width into the foreground
+INWARD_FADE_WIDTH = 3           # fade width into the foreground
 OUTWARD_FADE_WIDTH = 6          # protection fade width into transparent pixels
 
-FADE_COLOR_MODE = "transparent"      # "sampled" | "median" | "transparent"
+FADE_COLOR_MODE = "median"      # "sampled" | "median" | "transparent"
 INWARD_ALPHA_FLOOR = 96
 FADE_MAX_ALPHA = 96
 OVERWRITE = True
