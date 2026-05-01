@@ -75,8 +75,8 @@ def extract_frames_to_jpg(video_path, output_dir, prefix="frame", start_frame=0,
 
 
 # ====== EDIT THESE ======
-root_path = r"D:\HMeshi\_1_chara\_8_moon\vid"
-video_path = os.path.join(root_path, "ComfyUI_00002_.mp4")
+root_path = r"D:\HMeshi\-1_field_landscape\birds"
+video_path = os.path.join(root_path, "1.mp4")
 output_dir = os.path.join(root_path, "fbf")
 # ========================
 

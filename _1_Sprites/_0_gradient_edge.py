@@ -7,10 +7,9 @@ from PIL import Image
 # ----------------------------
 # CONFIG
 # ----------------------------
-root_dir = "/mnt/ssd/HMeshi/_0_card_design/_1_cardback_geom_abstract/colorful_design/"
-root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/rocks_stuff/export/"
-root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/ui_box/_0_generic/"
-name = "wbox"
+root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_0_ui_box/test/"
+# root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/gemini_uibox/_2_export/"
+name = "ui_pack"
 
 SOURCE_DIR = os.path.join(root_dir, "./")
 OUT_DIR = os.path.join(root_dir, f"./{name}_gradient_band/")
@@ -18,11 +17,13 @@ OUT_DIR = os.path.join(root_dir, f"./{name}_gradient_band/")
 INCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 ALPHA_THRESHOLD = 1
 # GRADIENT_BAND_PERCENT = 2
-GRADIENT_BAND_PERCENT = 1
+GRADIENT_BAND_PERCENT = 3
 OVERWRITE = True
 EDGE_TINT_ENABLED = True
-# EDGE_TINT_COLOR = (200, 210, 230)
-EDGE_TINT_COLOR = (255, 255, 255)
+EDGE_TINT_COLOR = (200, 210, 230)      # light blue-white 
+# EDGE_TINT_COLOR = (255, 255, 255)	   # pure white
+EDGE_TINT_COLOR = (0, 0, 0)	   # pure dark
+# EDGE_TINT_COLOR = (119,136,153)		   # steel dark 
 
 EDGE_TINT_STRENGTH = 0.55
 INWARD_ALPHA_FLOOR = 96

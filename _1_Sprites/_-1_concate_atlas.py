@@ -8,18 +8,18 @@ from PIL import Image
 # ----------------------------
 # CONFIG (edit these)
 # ----------------------------
-root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/ui_box/_1_icons/ui/"
+root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/gemini_uibox/_2_export/ui_pack_gradient_band/"
 # root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/terrain/"
-name = "ui_assets"
+name = "ui_pack"
 
 SOURCE_DIR = os.path.join(root_dir, "./")			# folder with 0.png, 1.png, etc.
 OUT_ATLAS_PNG = os.path.join(root_dir, "./{:s}.png".format(name))
 OUT_ATLAS_JSON = os.path.join(root_dir, "./{:s}.json".format(name))
 
 INCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
-MAX_ATLAS_WIDTH = 2048					# typical: 1024/2048/4096
+MAX_ATLAS_WIDTH = 4096					# typical: 1024/2048/4096
 # MAX_ATLAS_WIDTH = 1024					# typical: 1024/2048/4096
-PADDING = 2						# space between sprites to avoid bleeding
+PADDING = 2						    # space between sprites to avoid bleeding
 SORT_MODE = "name"					# "name" | "height" | "area"
 POWER_OF_TWO = False					# round atlas size up to next power of two
 INPUT_HAS_EXTRUDED_PADDING = True

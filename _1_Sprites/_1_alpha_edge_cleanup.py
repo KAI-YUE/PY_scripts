@@ -7,10 +7,9 @@ from PIL import Image, ImageFilter
 # ----------------------------
 # CONFIG
 # ----------------------------
-root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/rocks_stuff/export/"
-root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/ui_box/_1_icons/"
+root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_0_ui_box/test/"
 name = "grass_dec"
-name = "tree_terrain"
+name = "ui"
 
 SOURCE_DIR = os.path.join(root_dir, "./")
 OUT_DEBUG_DIR = os.path.join(root_dir, f"./{name}_alpha_edge_debug/")
@@ -23,17 +22,19 @@ EDGE_NEIGHBOR_MODE = 8          # 4 or 8
 EDGE_MASK_WIDTH = 1             # debug / visualization band width
 
 FADE_DIRECTION = "inward"      # "outward" | "inward" | "both"
+# FADE_DIRECTION = "outward"
 INWARD_FADE_WIDTH = 3           # fade width into the foreground
+INWARD_FADE_WIDTH = 2
 OUTWARD_FADE_WIDTH = 6          # protection fade width into transparent pixels
 
-FADE_COLOR_MODE = "median"      # "sampled" | "median" | "transparent"
+FADE_COLOR_MODE = "transparent"      # "sampled" | "median" | "transparent"
 INWARD_ALPHA_FLOOR = 96
 FADE_MAX_ALPHA = 96
 OVERWRITE = True
 
 USE_MASK_MORPHOLOGY = True
 MORPH_MODE = "close"            # "open" | "close" | "none"
-MORPH_RADIUS = 1
+MORPH_RADIUS = 2
 
 SAVE_INSIDE_MASK = True
 SAVE_OUTSIDE_MASK = True
@@ -41,6 +42,7 @@ SAVE_EDGE_OVERLAY = True
 SAVE_CLEAN_MASK = True
 SAVE_PROTECTED_RESULT = True
 
+# for debug purpose 
 INSIDE_EDGE_COLOR = (255, 80, 80, 255)
 OUTSIDE_EDGE_COLOR = (80, 200, 255, 255)
 
