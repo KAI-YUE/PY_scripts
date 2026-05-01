@@ -17,17 +17,21 @@ OUT_DIR = os.path.join(root_dir, f"./{name}_gradient_band/")
 INCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 ALPHA_THRESHOLD = 1
 # GRADIENT_BAND_PERCENT = 2
-GRADIENT_BAND_PERCENT = 3
+GRADIENT_BAND_PERCENT = 1
 OVERWRITE = True
 EDGE_TINT_ENABLED = True
 EDGE_TINT_COLOR = (200, 210, 230)      # light blue-white 
 # EDGE_TINT_COLOR = (255, 255, 255)	   # pure white
 EDGE_TINT_COLOR = (0, 0, 0)	   # pure dark
-# EDGE_TINT_COLOR = (119,136,153)		   # steel dark 
+EDGE_TINT_COLOR = (119,136,153)		   # steel dark 
 
 EDGE_TINT_STRENGTH = 0.55
 INWARD_ALPHA_FLOOR = 96
 INWARD_TINT_BIAS = 0.55
+
+COLOR_MODE = "original"         # "original" | "hard_set_color"
+COLOR_MODE = "hard_set_color"
+
 GRADIENT_DIRECTION = "inward"   # "inward" | "outward"
 # GRADIENT_DIRECTION = "outward" 
 OUTWARD_PADDING = 2
@@ -92,6 +96,58 @@ def _expand_canvas(img: Image.Image, padding: int) -> Image.Image:
 	out = Image.new("RGBA", (w + padding * 2, h + padding * 2), (0, 0, 0, 0))
 	out.paste(img, (padding, padding))
 	return out
+
+
+def _median_channel(values: list[int]) -> int:
+	values = sorted(values)
+	count = len(values)
+	mid = count // 2
+	if count % 2:
+		return values[mid]
+	return int(round((values[mid - 1] + values[mid]) / 2.0))
+
+
+def _hard_set_sprite_color(img: Image.Image) -> Image.Image:
+	pix = img.load()
+	w, h = img.size
+	red = []
+	green = []
+	blue = []
+
+	for y in range(h):
+		for x in range(w):
+			r, g, b, a = pix[x, y]
+			if a >= ALPHA_THRESHOLD:
+				red.append(r)
+				green.append(g)
+				blue.append(b)
+
+	if not red:
+		return img.copy()
+
+	median_rgb = (
+		_median_channel(red),
+		_median_channel(green),
+		_median_channel(blue),
+	)
+
+	out = img.copy()
+	out_pix = out.load()
+	mr, mg, mb = median_rgb
+	for y in range(h):
+		for x in range(w):
+			_, _, _, a = out_pix[x, y]
+			out_pix[x, y] = (mr, mg, mb, a)
+
+	return out
+
+
+def _prepare_color_mode(img: Image.Image) -> Image.Image:
+	if COLOR_MODE == "original":
+		return img
+	if COLOR_MODE == "hard_set_color":
+		return _hard_set_sprite_color(img)
+	raise ValueError(f"Unknown COLOR_MODE: {COLOR_MODE}")
 
 
 def _apply_inward_gradient_band(img: Image.Image) -> tuple[Image.Image, int]:
@@ -285,6 +341,7 @@ def _apply_outward_gradient_band(img: Image.Image) -> tuple[Image.Image, int]:
 
 def process_image(path: Path, out_dir: Path):
 	img = Image.open(path).convert("RGBA")
+	img = _prepare_color_mode(img)
 	if GRADIENT_DIRECTION == "inward":
 		processed, band_px = _apply_inward_gradient_band(img)
 	elif GRADIENT_DIRECTION == "outward":
