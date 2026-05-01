@@ -504,7 +504,7 @@ def process_image(path: Path, out_dir: Path):
 
 
 def _run_lazy_ATLAS_bake(out_dir: Path):
-	atlas_script = Path(__file__).with_name("_-1_concate_atlas.py")
+	atlas_script = Path(__file__).resolve().parent.parent / "_-1_concate_atlas.py"
 	if not atlas_script.exists():
 		raise FileNotFoundError(f"Atlas bake script not found: {atlas_script}")
 
