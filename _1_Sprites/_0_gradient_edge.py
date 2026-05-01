@@ -14,6 +14,7 @@ out_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/gemini_uibox/_2_export/ui_pack_gradient_ba
 # CONFIG
 # ----------------------------
 root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_0_ui_box/test/"
+root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_0_ui_box/mask/"
 # root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/gemini_uibox/_2_export/"
 name = "ui_pack"
 
@@ -29,14 +30,15 @@ OUT_DIR     = out_dir
 INCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 ALPHA_THRESHOLD = 1
 # GRADIENT_BAND_PERCENT = 2
-GRADIENT_BAND_PERCENT = 1
+GRADIENT_BAND_PERCENT = 0.1
 
 OVERWRITE = True
 EDGE_TINT_ENABLED = True
 EDGE_TINT_COLOR = (200, 210, 230)      # light blue-white 
 # EDGE_TINT_COLOR = (255, 255, 255)	   # pure white
 EDGE_TINT_COLOR = (0, 0, 0)	   # pure dark
-EDGE_TINT_COLOR = (119,136,153)		   # steel dark 
+# EDGE_TINT_COLOR = (119,136,153)		   # steel dark 
+# EDGE_TINT_COLOR = (6, 7, 11)  # default text dark
 
 EDGE_TINT_STRENGTH = 0.55
 INWARD_ALPHA_FLOOR = 96
@@ -47,7 +49,7 @@ COLOR_MODE = "hard_set_color"
 
 GRADIENT_DIRECTION = "inward"   # "inward" | "outward"
 # GRADIENT_DIRECTION = "outward" 
-OUTWARD_PADDING = 2
+OUTWARD_PADDING = 0
 
 def _collect_images(source_dir: str):
 	src = Path(source_dir)

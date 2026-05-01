@@ -4,7 +4,7 @@ import sys
 from collections import deque
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageFilter
 
 EXTERNAL_OUT_DIR = True
 out_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/gemini_uibox/_2_export/ui_pack_gradient_band/"
@@ -25,7 +25,21 @@ OUT_DIR = out_dir
 
 INCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 ALPHA_THRESHOLD = 1
-GRADIENT_BAND_PERCENT = 1
+GRADIENT_BAND_PERCENT = 1.9
+
+EDGE_MASK_SMOOTH_ENABLED = True
+EDGE_MASK_REMOVE_SPIKES = False
+EDGE_MASK_FILL_GAPS = True
+EDGE_MASK_MORPH_SIZE = 3          # Odd numbers only: 3 removes 1px spike details.
+EDGE_MASK_DILATE_SIZE = 5         # Odd numbers only: larger values reconnect wider gaps.
+EDGE_MASK_ERODE_SIZE = 3          # Odd numbers only: smaller than dilation keeps edges fuller.
+EDGE_MASK_PRE_BLUR_RADIUS = 0.9   # Before gradient detection; can expand the detected mask.
+EDGE_MASK_POST_BLUR_RADIUS = 0.  # After gradient; softens the exported alpha edge.
+
+PROTECTIVE_BAND_RGB_SMOOTH_ENABLED = True
+# PROTECTIVE_BAND_RGB_SMOOTH_ENABLED = False
+PROTECTIVE_BAND_RGB_BLUR_RADIUS = 1.8
+PROTECTIVE_BAND_RGB_MASK_GROW_EXTRA = 3
 
 OVERWRITE = True
 EDGE_TINT_ENABLED = True
@@ -34,6 +48,7 @@ EDGE_TINT_ENABLED = True
 # exterior-connected transparent pixels are the outer bound, while enclosed
 # transparent holes are the inner mask bound.
 OUTER_BOUND_TINT_COLOR = (119, 136, 153)   # base environment side
+# OUTER_BOUND_TINT_COLOR = (244, 243, 242)
 INNER_BOUND_TINT_COLOR = (244, 243, 242)         # inner mask side
 
 EDGE_TINT_STRENGTH = 0.55
@@ -41,6 +56,7 @@ INWARD_ALPHA_FLOOR = 96
 INWARD_TINT_BIAS = 0.55
 
 COLOR_MODE = "original"     # "original" | "hard_set_color"
+COLOR_MODE = "hard_set_color"
 
 GRADIENT_DIRECTION = "inward"     # "inward" | "outward"
 OUTWARD_PADDING = 2
@@ -166,6 +182,65 @@ def _prepare_color_mode(img: Image.Image) -> Image.Image:
 	if COLOR_MODE == "hard_set_color":
 		return _hard_set_sprite_color(img)
 	raise ValueError(f"Unknown COLOR_MODE: {COLOR_MODE}")
+
+
+def _smooth_alpha_mask(img: Image.Image) -> Image.Image:
+	if not EDGE_MASK_SMOOTH_ENABLED:
+		return img
+
+	for name, size in (
+		("EDGE_MASK_MORPH_SIZE", EDGE_MASK_MORPH_SIZE),
+		("EDGE_MASK_DILATE_SIZE", EDGE_MASK_DILATE_SIZE),
+		("EDGE_MASK_ERODE_SIZE", EDGE_MASK_ERODE_SIZE),
+	):
+		if size < 3 or size % 2 == 0:
+			raise ValueError(f"{name} must be an odd integer >= 3")
+
+	alpha = img.getchannel("A")
+
+	if EDGE_MASK_FILL_GAPS:
+		alpha = alpha.filter(ImageFilter.MaxFilter(EDGE_MASK_DILATE_SIZE))
+		alpha = alpha.filter(ImageFilter.MinFilter(EDGE_MASK_ERODE_SIZE))
+
+	if EDGE_MASK_REMOVE_SPIKES:
+		alpha = alpha.filter(ImageFilter.MinFilter(EDGE_MASK_MORPH_SIZE))
+		alpha = alpha.filter(ImageFilter.MaxFilter(EDGE_MASK_MORPH_SIZE))
+
+	if EDGE_MASK_PRE_BLUR_RADIUS > 0:
+		alpha = alpha.filter(ImageFilter.GaussianBlur(EDGE_MASK_PRE_BLUR_RADIUS))
+
+	out = img.copy()
+	out.putalpha(alpha)
+	return out
+
+
+def _blur_alpha(img: Image.Image, radius: float) -> Image.Image:
+	if radius <= 0:
+		return img
+
+	alpha = img.getchannel("A").filter(ImageFilter.GaussianBlur(radius))
+	out = img.copy()
+	out.putalpha(alpha)
+	return out
+
+
+def _smooth_protective_band_rgb(img: Image.Image, band_px: int) -> Image.Image:
+	if not PROTECTIVE_BAND_RGB_SMOOTH_ENABLED or PROTECTIVE_BAND_RGB_BLUR_RADIUS <= 0:
+		return img
+
+	alpha = img.getchannel("A")
+	band_mask = alpha.point(lambda a: 255 if ALPHA_THRESHOLD <= a < 255 else 0, "L")
+	grow_px = max(0, band_px + PROTECTIVE_BAND_RGB_MASK_GROW_EXTRA)
+	if grow_px > 0:
+		band_mask = band_mask.filter(ImageFilter.MaxFilter(grow_px * 2 + 1))
+
+	rgb = img.convert("RGB")
+	blurred_rgb = rgb.filter(ImageFilter.GaussianBlur(PROTECTIVE_BAND_RGB_BLUR_RADIUS))
+	smoothed_rgb = Image.composite(blurred_rgb, rgb, band_mask)
+
+	out = smoothed_rgb.convert("RGBA")
+	out.putalpha(alpha)
+	return out
 
 
 def _classify_transparent_regions(img: Image.Image):
@@ -408,12 +483,16 @@ def _apply_outward_gradient_band(img: Image.Image) -> tuple[Image.Image, int]:
 def process_image(path: Path, out_dir: Path):
 	img = Image.open(path).convert("RGBA")
 	img = _prepare_color_mode(img)
+	img = _smooth_alpha_mask(img)
 	if GRADIENT_DIRECTION == "inward":
 		processed, band_px = _apply_inward_gradient_band(img)
 	elif GRADIENT_DIRECTION == "outward":
 		processed, band_px = _apply_outward_gradient_band(img)
 	else:
 		raise ValueError(f"Unknown GRADIENT_DIRECTION: {GRADIENT_DIRECTION}")
+
+	processed = _smooth_protective_band_rgb(processed, band_px)
+	processed = _blur_alpha(processed, EDGE_MASK_POST_BLUR_RADIUS)
 
 	out_dir.mkdir(parents=True, exist_ok=True)
 	out_path = out_dir / path.name
