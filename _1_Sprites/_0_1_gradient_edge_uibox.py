@@ -7,47 +7,53 @@ from pathlib import Path
 from PIL import Image
 
 EXTERNAL_OUT_DIR = True
-# EXTERNAL_OUT_DIR = False
 out_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/gemini_uibox/_2_export/ui_pack_gradient_band/"
 
 # ----------------------------
 # CONFIG
 # ----------------------------
 root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_0_ui_box/test/"
-# root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/gemini_uibox/_2_export/"
 name = "ui_pack"
 
-LAZY_ATLAS_BAKE = False         # True -> run _-1_concate_atlas.py after processing
-LAZY_ATLAS_BAKE = True
+LAZY_ATLAS_BAKE = True          # True -> run _-1_concate_atlas.py after processing
 
 if not EXTERNAL_OUT_DIR:
 	out_dir = os.path.join(root_dir, f"./{name}_gradient_band/")
 
-SOURCE_DIR  = os.path.join(root_dir, "./")
-OUT_DIR     = out_dir
+SOURCE_DIR = os.path.join(root_dir, "./")
+OUT_DIR = out_dir
 
 INCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 ALPHA_THRESHOLD = 1
-# GRADIENT_BAND_PERCENT = 2
 GRADIENT_BAND_PERCENT = 1
 
 OVERWRITE = True
 EDGE_TINT_ENABLED = True
-EDGE_TINT_COLOR = (200, 210, 230)      # light blue-white 
-# EDGE_TINT_COLOR = (255, 255, 255)	   # pure white
-EDGE_TINT_COLOR = (0, 0, 0)	   # pure dark
-EDGE_TINT_COLOR = (119,136,153)		   # steel dark 
+
+# UI-box edges can touch two different transparent regions:
+# exterior-connected transparent pixels are the outer bound, while enclosed
+# transparent holes are the inner mask bound.
+OUTER_BOUND_TINT_COLOR = (119, 136, 153)   # base environment side
+INNER_BOUND_TINT_COLOR = (244, 243, 242)         # inner mask side
 
 EDGE_TINT_STRENGTH = 0.55
 INWARD_ALPHA_FLOOR = 96
 INWARD_TINT_BIAS = 0.55
 
-COLOR_MODE = "original"         # "original" | "hard_set_color"
-COLOR_MODE = "hard_set_color"
+COLOR_MODE = "original"     # "original" | "hard_set_color"
 
-GRADIENT_DIRECTION = "inward"   # "inward" | "outward"
-# GRADIENT_DIRECTION = "outward" 
+GRADIENT_DIRECTION = "inward"     # "inward" | "outward"
 OUTWARD_PADDING = 2
+
+BOUND_OUTER = 1
+BOUND_INNER = 2
+
+NEIGHBORS = (
+	(-1, -1), (0, -1), (1, -1),
+	(-1,  0),          (1,  0),
+	(-1,  1), (0,  1), (1,  1),
+)
+
 
 def _collect_images(source_dir: str):
 	src = Path(source_dir)
@@ -162,6 +168,62 @@ def _prepare_color_mode(img: Image.Image) -> Image.Image:
 	raise ValueError(f"Unknown COLOR_MODE: {COLOR_MODE}")
 
 
+def _classify_transparent_regions(img: Image.Image):
+	alpha = img.getchannel("A")
+	src = alpha.load()
+	w, h = img.size
+	region = [[-1 for _ in range(w)] for _ in range(h)]
+	region_is_outer = []
+
+	def is_transparent(x: int, y: int) -> bool:
+		return src[x, y] < ALPHA_THRESHOLD
+
+	for y in range(h):
+		for x in range(w):
+			if not is_transparent(x, y) or region[y][x] != -1:
+				continue
+
+			region_id = len(region_is_outer)
+			touches_canvas_edge = x == 0 or y == 0 or x == w - 1 or y == h - 1
+			region[y][x] = region_id
+			queue = deque([(x, y)])
+
+			while queue:
+				cx, cy = queue.popleft()
+				if cx == 0 or cy == 0 or cx == w - 1 or cy == h - 1:
+					touches_canvas_edge = True
+
+				for dx, dy in NEIGHBORS:
+					nx = cx + dx
+					ny = cy + dy
+					if nx < 0 or ny < 0 or nx >= w or ny >= h:
+						continue
+					if not is_transparent(nx, ny) or region[ny][nx] != -1:
+						continue
+
+					region[ny][nx] = region_id
+					queue.append((nx, ny))
+
+			region_is_outer.append(touches_canvas_edge)
+
+	return region, region_is_outer
+
+
+def _boundary_tint(boundary_kind: int) -> tuple[int, int, int]:
+	if boundary_kind == BOUND_INNER:
+		return INNER_BOUND_TINT_COLOR
+	return OUTER_BOUND_TINT_COLOR
+
+
+def _transparent_boundary_kind(region: list[list[int]], region_is_outer: list[bool], x: int, y: int) -> int:
+	region_id = region[y][x]
+	if region_id < 0:
+		return BOUND_OUTER
+	if region_is_outer[region_id]:
+		return BOUND_OUTER
+	return BOUND_INNER
+
+
 def _apply_inward_gradient_band(img: Image.Image) -> tuple[Image.Image, int]:
 	alpha = img.getchannel("A")
 	src = alpha.load()
@@ -171,36 +233,33 @@ def _apply_inward_gradient_band(img: Image.Image) -> tuple[Image.Image, int]:
 	if band_px <= 0:
 		return img.copy(), 0
 
+	transparent_region, region_is_outer = _classify_transparent_regions(img)
 	dist = [[-1 for _ in range(w)] for _ in range(h)]
+	boundary_kind = [[BOUND_OUTER for _ in range(w)] for _ in range(h)]
 	queue = deque()
 
 	def is_inside(x: int, y: int) -> bool:
 		return src[x, y] >= ALPHA_THRESHOLD
-
-	neighbors = (
-		(-1, -1), (0, -1), (1, -1),
-		(-1,  0),          (1,  0),
-		(-1,  1), (0,  1), (1,  1),
-	)
 
 	for y in range(h):
 		for x in range(w):
 			if not is_inside(x, y):
 				continue
 
-			is_boundary = False
-			for dx, dy in neighbors:
+			kind = None
+			for dx, dy in NEIGHBORS:
 				nx = x + dx
 				ny = y + dy
 				if nx < 0 or ny < 0 or nx >= w or ny >= h:
-					is_boundary = True
+					kind = BOUND_OUTER
 					break
 				if not is_inside(nx, ny):
-					is_boundary = True
+					kind = _transparent_boundary_kind(transparent_region, region_is_outer, nx, ny)
 					break
 
-			if is_boundary:
+			if kind is not None:
 				dist[y][x] = 0
+				boundary_kind[y][x] = kind
 				queue.append((x, y))
 
 	while queue:
@@ -209,17 +268,16 @@ def _apply_inward_gradient_band(img: Image.Image) -> tuple[Image.Image, int]:
 		if base_dist >= band_px - 1:
 			continue
 
-		for dx, dy in neighbors:
+		for dx, dy in NEIGHBORS:
 			nx = x + dx
 			ny = y + dy
 			if nx < 0 or ny < 0 or nx >= w or ny >= h:
 				continue
-			if not is_inside(nx, ny):
-				continue
-			if dist[ny][nx] != -1:
+			if not is_inside(nx, ny) or dist[ny][nx] != -1:
 				continue
 
 			dist[ny][nx] = base_dist + 1
+			boundary_kind[ny][nx] = boundary_kind[y][x]
 			queue.append((nx, ny))
 
 	out = img.copy()
@@ -245,7 +303,7 @@ def _apply_inward_gradient_band(img: Image.Image) -> tuple[Image.Image, int]:
 				edge_mix = max(0.0, min(1.0, edge_mix + INWARD_TINT_BIAS * (1.0 - edge_mix)))
 				mix = EDGE_TINT_STRENGTH * edge_mix
 				r, g, b, a = out_pix[x, y]
-				tr, tg, tb = EDGE_TINT_COLOR
+				tr, tg, tb = _boundary_tint(boundary_kind[y][x])
 				out_pix[x, y] = (
 					int(round(r * (1.0 - mix) + tr * mix)),
 					int(round(g * (1.0 - mix) + tg * mix)),
@@ -271,39 +329,36 @@ def _apply_outward_gradient_band(img: Image.Image) -> tuple[Image.Image, int]:
 	out_alpha = alpha_out.load()
 	w, h = out.size
 
+	transparent_region, region_is_outer = _classify_transparent_regions(out)
 	dist = [[-1 for _ in range(w)] for _ in range(h)]
 	seed_rgb = [[None for _ in range(w)] for _ in range(h)]
+	boundary_kind = [[BOUND_OUTER for _ in range(w)] for _ in range(h)]
 	queue = deque()
 
 	def is_inside(x: int, y: int) -> bool:
 		return src[x, y] >= ALPHA_THRESHOLD
-
-	neighbors = (
-		(-1, -1), (0, -1), (1, -1),
-		(-1,  0),          (1,  0),
-		(-1,  1), (0,  1), (1,  1),
-	)
 
 	for y in range(h):
 		for x in range(w):
 			if not is_inside(x, y):
 				continue
 
-			is_boundary = False
-			for dx, dy in neighbors:
+			kind = None
+			for dx, dy in NEIGHBORS:
 				nx = x + dx
 				ny = y + dy
 				if nx < 0 or ny < 0 or nx >= w or ny >= h:
-					is_boundary = True
+					kind = BOUND_OUTER
 					break
 				if not is_inside(nx, ny):
-					is_boundary = True
+					kind = _transparent_boundary_kind(transparent_region, region_is_outer, nx, ny)
 					break
 
-			if is_boundary:
+			if kind is not None:
 				dist[y][x] = 0
 				r, g, b, _ = out_pix[x, y]
 				seed_rgb[y][x] = (r, g, b)
+				boundary_kind[y][x] = kind
 				queue.append((x, y))
 
 	while queue:
@@ -312,19 +367,18 @@ def _apply_outward_gradient_band(img: Image.Image) -> tuple[Image.Image, int]:
 		if base_dist >= band_px:
 			continue
 
-		for dx, dy in neighbors:
+		for dx, dy in NEIGHBORS:
 			nx = x + dx
 			ny = y + dy
 			if nx < 0 or ny < 0 or nx >= w or ny >= h:
 				continue
-			if is_inside(nx, ny):
-				continue
-			if dist[ny][nx] != -1:
+			if is_inside(nx, ny) or dist[ny][nx] != -1:
 				continue
 
 			new_dist = base_dist + 1
 			dist[ny][nx] = new_dist
 			seed_rgb[ny][nx] = seed_rgb[y][x]
+			boundary_kind[ny][nx] = boundary_kind[y][x]
 			queue.append((nx, ny))
 
 	for y in range(h):
@@ -339,7 +393,7 @@ def _apply_outward_gradient_band(img: Image.Image) -> tuple[Image.Image, int]:
 
 			if EDGE_TINT_ENABLED:
 				mix = EDGE_TINT_STRENGTH * falloff
-				tr, tg, tb = EDGE_TINT_COLOR
+				tr, tg, tb = _boundary_tint(boundary_kind[y][x])
 				r = int(round(r * (1.0 - mix) + tr * mix))
 				g = int(round(g * (1.0 - mix) + tg * mix))
 				b = int(round(b * (1.0 - mix) + tb * mix))

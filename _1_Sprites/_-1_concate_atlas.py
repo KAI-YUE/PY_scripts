@@ -5,16 +5,26 @@ import json
 from pathlib import Path
 from PIL import Image
 
+TO_GAME_DIR = True
+
 # ----------------------------
 # CONFIG (edit these)
 # ----------------------------
-root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/gemini_uibox/_2_export/ui_pack_gradient_band/"
+root_dir = os.environ.get(
+	"ATLAS_ROOT_DIR",
+	"/mnt/ssd/HMeshi/_2_UI_Uten/gemini_uibox/_2_export/ui_pack_gradient_band/",
+)
 # root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/terrain/"
-name = "ui_pack"
+name = os.environ.get("ATLAS_NAME", "ui_pack")
+
+if TO_GAME_DIR:
+	output_dir = "/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/hm/ui/"
+else:
+	output_dir = root_dir
 
 SOURCE_DIR = os.path.join(root_dir, "./")			# folder with 0.png, 1.png, etc.
-OUT_ATLAS_PNG = os.path.join(root_dir, "./{:s}.png".format(name))
-OUT_ATLAS_JSON = os.path.join(root_dir, "./{:s}.json".format(name))
+OUT_ATLAS_PNG = os.path.join(output_dir, "./{:s}.png".format(name))
+OUT_ATLAS_JSON = os.path.join(output_dir, "./{:s}.json".format(name))
 
 INCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 MAX_ATLAS_WIDTH = 4096					# typical: 1024/2048/4096
@@ -124,7 +134,10 @@ def _collect_images(source_dir: str, target_long_edge: int | None = None):
 		raise FileNotFoundError(f"SOURCE_DIR not found: {source_dir}")
 
 	paths = []
+	out_names = {Path(OUT_ATLAS_PNG).name, Path(OUT_ATLAS_JSON).name}
 	for p in src.iterdir():
+		if p.name in out_names:
+			continue
 		if p.is_file() and p.suffix.lower() in INCLUDE_EXTS:
 			paths.append(p)
 
