@@ -8,7 +8,7 @@ from PIL import Image, ImageDraw
 # ----------------------------
 # CONFIG
 # ----------------------------
-root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_0_ui_box/test/"
+root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_0_ui_box/test0/"
 name = "ui_pack"
 
 SOURCE_DIR = os.path.join(root_dir, "./")
@@ -31,6 +31,7 @@ LINE_NON_TRANSPARENT_ALPHA_THRESHOLD = 1
 LINE_MEDIAN_SAMPLE_ALPHA_THRESHOLD = 150
 LINE_MEAN_ALPHA_MAX_DELTA = 80
 CLEAR_ALPHA_THRESHOLD = 1
+INNER_EDGE_HALF_GATE_ENABLED = True
 
 DEBUG_OVERLAY_ENABLED = True
 DEBUG_BOX_COLOR = (255, 64, 64, 255)
@@ -127,20 +128,39 @@ def _line_mean_alpha_spikes(patch_alpha: np.ndarray, axis: str) -> tuple[np.ndar
 	return np.where(not_transparent & not_close)[0], template_median
 
 
+def _allowed_inner_edge_y_range(img_h: int, match: dict) -> tuple[int, int, str]:
+	y0 = match["y"]
+	y1 = y0 + match["h"]
+	if not INNER_EDGE_HALF_GATE_ENABLED:
+		return y0, y1, "all"
+
+	mid_y = img_h / 2.0
+	match_center_y = y0 + match["h"] / 2.0
+	split_y = y0 + match["h"] // 2
+
+	if match_center_y > mid_y:
+		return y0, split_y, "top"
+	return split_y, y1, "bottom"
+
+
 def _cleanup_patch_region(img: Image.Image, patch_img: Image.Image, match: dict, patch_path: Path) -> tuple[Image.Image, int, str]:
 	axis = _patch_axis(patch_path)
 	source = np.array(img.convert("RGBA"), dtype=np.uint8)
 	patch_alpha = np.array(patch_img.convert("RGBA"), dtype=np.uint8)[:, :, 3]
+	img_h = source.shape[0]
 	x0 = match["x"]
 	y0 = match["y"]
 	x1 = x0 + match["w"]
 	y1 = y0 + match["h"]
+	allowed_y0, allowed_y1, allowed_side = _allowed_inner_edge_y_range(img_h, match)
 	removed = 0
 
 	if axis == "row":
 		spike_rows, _ = _line_mean_alpha_spikes(patch_alpha, axis)
 		for row in spike_rows:
 			yy = y0 + int(row)
+			if yy < allowed_y0 or yy >= allowed_y1:
+				continue
 			segment = source[yy, x0:x1]
 			clear = segment[:, 3] >= CLEAR_ALPHA_THRESHOLD
 			removed += int(np.count_nonzero(clear))
@@ -149,12 +169,12 @@ def _cleanup_patch_region(img: Image.Image, patch_img: Image.Image, match: dict,
 		spike_cols, _ = _line_mean_alpha_spikes(patch_alpha, axis)
 		for col in spike_cols:
 			xx = x0 + int(col)
-			segment = source[y0:y1, xx]
+			segment = source[allowed_y0:allowed_y1, xx]
 			clear = segment[:, 3] >= CLEAR_ALPHA_THRESHOLD
 			removed += int(np.count_nonzero(clear))
 			segment[clear] = (0, 0, 0, 0)
 
-	return Image.fromarray(source, "RGBA"), removed, axis
+	return Image.fromarray(source, "RGBA"), removed, f"{axis}/{allowed_side}"
 
 
 def _draw_debug_overlay(source_img: Image.Image, matches: list[tuple[Path, dict, int, str]]) -> Image.Image:

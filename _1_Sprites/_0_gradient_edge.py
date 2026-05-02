@@ -30,13 +30,13 @@ OUT_DIR     = out_dir
 INCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 ALPHA_THRESHOLD = 1
 # GRADIENT_BAND_PERCENT = 2
-GRADIENT_BAND_PERCENT = 0.1
+GRADIENT_BAND_PERCENT = 2
 
 OVERWRITE = True
 EDGE_TINT_ENABLED = True
 EDGE_TINT_COLOR = (200, 210, 230)      # light blue-white 
-# EDGE_TINT_COLOR = (255, 255, 255)	   # pure white
-EDGE_TINT_COLOR = (0, 0, 0)	   # pure dark
+EDGE_TINT_COLOR = (255, 255, 255)	   # pure white
+# EDGE_TINT_COLOR = (0, 0, 0)	   # pure dark
 # EDGE_TINT_COLOR = (119,136,153)		   # steel dark 
 # EDGE_TINT_COLOR = (6, 7, 11)  # default text dark
 

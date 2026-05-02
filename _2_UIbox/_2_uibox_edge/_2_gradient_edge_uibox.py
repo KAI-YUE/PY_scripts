@@ -34,7 +34,7 @@ EDGE_MASK_MORPH_SIZE = 3          # Odd numbers only: 3 removes 1px spike detail
 EDGE_MASK_DILATE_SIZE = 5         # Odd numbers only: larger values reconnect wider gaps.
 EDGE_MASK_ERODE_SIZE = 3          # Odd numbers only: smaller than dilation keeps edges fuller.
 EDGE_MASK_PRE_BLUR_RADIUS = 0.9   # Before gradient detection; can expand the detected mask.
-EDGE_MASK_POST_BLUR_RADIUS = 0.  # After gradient; softens the exported alpha edge.
+EDGE_MASK_POST_BLUR_RADIUS = 0.4  # After gradient; softens the exported alpha edge.
 
 PROTECTIVE_BAND_RGB_SMOOTH_ENABLED = True
 # PROTECTIVE_BAND_RGB_SMOOTH_ENABLED = False
