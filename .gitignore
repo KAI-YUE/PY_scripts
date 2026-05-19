@@ -1,0 +1,23 @@
+# Data exports / local generated files
+*.csv
+
+# Editor settings
+.vscode/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local environment files
+.env
+.env.*
+
+# OS / tool noise
+.DS_Store
+Thumbs.db
