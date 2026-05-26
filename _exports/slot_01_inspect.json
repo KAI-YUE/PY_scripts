@@ -1,0 +1,115 @@
+{
+  "meta": {
+    "alerted": {
+      "count": 0,
+      "keys": [],
+      "type": "dict"
+    },
+    "discovered": {
+      "count": 1,
+      "keys": [
+        "b_red"
+      ],
+      "type": "dict"
+    },
+    "icon": {
+      "atlas_key": "icons",
+      "quad_key": "question_mark"
+    },
+    "playtime_s": 7,
+    "saved_at": 1779203156,
+    "schema_version": 1,
+    "slot_id": 1,
+    "title": "DATA 1",
+    "unlocked": {
+      "count": 6,
+      "keys": [
+        "e_holo",
+        "b_red",
+        "e_polychrome",
+        "e_base",
+        "e_negative",
+        "e_foil"
+      ],
+      "type": "dict"
+    },
+    "user_name": "player"
+  },
+  "paths": {
+    "meta": "/home/kyue/.local/share/love/HM/saves/slots/slot_01_meta.hm",
+    "slot": "/home/kyue/.local/share/love/HM/saves/slots/slot_01.hm"
+  },
+  "slot": {
+    "card_zones": {
+      "count": 4,
+      "keys": [
+        "deck",
+        "discard",
+        "play",
+        "hand"
+      ],
+      "type": "dict"
+    },
+    "meta": {
+      "alerted": {},
+      "discovered": {
+        "b_red": true
+      },
+      "icon": {
+        "atlas_key": "icons",
+        "quad_key": "question_mark"
+      },
+      "playtime_s": 7,
+      "saved_at": 1779203156,
+      "schema_version": 1,
+      "slot_id": 1,
+      "title": "DATA 1",
+      "unlocked": {
+        "b_red": true,
+        "e_base": true,
+        "e_foil": true,
+        "e_holo": true,
+        "e_negative": true,
+        "e_polychrome": true
+      },
+      "user_name": "player"
+    },
+    "pawn_counts": {
+      "pawns": 1,
+      "terrain": 0
+    },
+    "run": {
+      "count": 4,
+      "keys": [
+        "cardzones",
+        "Ver",
+        "g_state",
+        "GAME"
+      ],
+      "type": "dict"
+    },
+    "schema_version": 1,
+    "story": {
+      "count": 3,
+      "keys": [
+        "flags",
+        "pointers",
+        "dialogue"
+      ],
+      "type": "dict"
+    },
+    "top_keys": [
+      "cards",
+      "story",
+      "schema_version",
+      "run",
+      "meta",
+      "world"
+    ],
+    "world_field_keys": [
+      "Mcfg",
+      "Fcfg"
+    ]
+  },
+  "slot_idx": 1
+}

@@ -12,6 +12,7 @@ TO_GAME_DIR = True
 # ----------------------------
 root_dir = os.environ.get(
 	"ATLAS_ROOT_DIR",
+	# "/mnt/ssd/HMeshi/_2_UI_Uten/_3_icon_collection/",
 	"/mnt/ssd/HMeshi/_2_UI_Uten/-1_gemini_uibox/_2_export/_1_pngs/",
 	# "/mnt/ssd/HMeshi/_2_UI_Uten/gemini_uibox/_2_export/_0_ui_pack_gradient_band/",
 	# "/mnt/ssd/HMeshi/_2_UI_Uten/_1_icon/export/_0_icon_pack_gradient_band/"

@@ -7,14 +7,15 @@ from pathlib import Path
 from PIL import Image
 
 EXTERNAL_OUT_DIR = True
-EXTERNAL_OUT_DIR = False
-out_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/gemini_uibox/_2_export/_0_ui_pack_gradient_band/"
+# EXTERNAL_OUT_DIR = False
+out_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_3_icon_collection/"
 
 # ----------------------------
 # CONFIG
 # ----------------------------
 root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/gemini_uibox/_2_export/_2_strokes/cropped/h-stroke/"
 root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_1_icon/export/"
+root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/bar/comp_bar/"
 
 name = "ui_pack"
 name = "icon_pack"
@@ -31,7 +32,7 @@ OUT_DIR     = out_dir
 INCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 ALPHA_THRESHOLD = 1
 # GRADIENT_BAND_PERCENT = 2
-GRADIENT_BAND_PERCENT = 1
+GRADIENT_BAND_PERCENT = 2
 
 OVERWRITE = True
 EDGE_TINT_ENABLED = True
@@ -39,7 +40,7 @@ EDGE_TINT_COLOR = (200, 210, 230)      # light blue-white
 # EDGE_TINT_COLOR = (255, 255, 255)	   # pure white
 # EDGE_TINT_COLOR = (0, 0, 0)	   # pure dark
 # EDGE_TINT_COLOR = (119,136,153)		   # steel dark 
-# EDGE_TINT_COLOR = (6, 7, 11)  # default text dark
+EDGE_TINT_COLOR = (6, 7, 11)  # default text dark
 
 EDGE_TINT_STRENGTH = 0.55
 INWARD_ALPHA_FLOOR = 96
@@ -50,7 +51,7 @@ COLOR_MODE = "hard_set_color"
 
 GRADIENT_DIRECTION = "inward"   # "inward" | "outward"
 # GRADIENT_DIRECTION = "outward" 
-OUTWARD_PADDING = 0
+OUTWARD_PADDING = 2
 
 def _collect_images(source_dir: str):
 	src = Path(source_dir)
