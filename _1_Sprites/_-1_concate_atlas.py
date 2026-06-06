@@ -7,19 +7,22 @@ from PIL import Image
 
 TO_GAME_DIR = True
 
+_export_atlas_name = "icon_pack"
+# _export_atlas_name = "map"
+_export_atlas_name = "title_pack"
+
 # ----------------------------
 # CONFIG (edit these)
 # ----------------------------
 root_dir = os.environ.get(
 	"ATLAS_ROOT_DIR",
-	# "/mnt/ssd/HMeshi/_2_UI_Uten/_3_icon_collection/",
-	"/mnt/ssd/HMeshi/_2_UI_Uten/-1_gemini_uibox/_2_export/_1_pngs/",
-	# "/mnt/ssd/HMeshi/_2_UI_Uten/gemini_uibox/_2_export/_0_ui_pack_gradient_band/",
-	# "/mnt/ssd/HMeshi/_2_UI_Uten/_1_icon/export/_0_icon_pack_gradient_band/"
+	# "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/title/downsampled/",
+	"/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/_0_title_pack_gradient_band/"
+	# "/mnt/ssd/HMeshi/_2_UI_Uten/_3_icon_collection/26_0601/",
+	# "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/export/_0_title_pack_gradient_band/"
 )
 # root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/terrain/"
-name = os.environ.get("ATLAS_NAME", "icon_pack")
-name = os.environ.get("ATLAS_NAME", "ui_pack")
+name = os.environ.get("ATLAS_NAME", _export_atlas_name)
 
 if TO_GAME_DIR:
 	output_dir = "/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/hm/ui/"
@@ -34,7 +37,8 @@ INCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 MAX_ATLAS_WIDTH = 4096					# typical: 1024/2048/4096
 # MAX_ATLAS_WIDTH = 2048
 # MAX_ATLAS_WIDTH = 1024				# typical: 1024/2048/4096
-PADDING = 2						        # space between sprites to avoid bleeding
+PADDING = 6						        # space between sprites to avoid bleeding
+# PADDING = 0
 SORT_MODE = "name"					    # "name" | "height" | "area"
 POWER_OF_TWO = False					# round atlas size up to next power of two
 

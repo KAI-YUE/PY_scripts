@@ -1,12 +1,16 @@
 from collections import Counter
-from pathlib import Path
+from pathlib     import Path
+import numpy as np
 
 from PIL import Image
+
+PREDEFINED_RGB = None      # None | (r, g, b) | (r, g, b, a) | 255*np.array((r, g, b, a))
+# PREDEFINED_RGB = 255*np.array((1.0, 0.93, 0.72, 0.64))
 
 #%% ----------------------------
 # CONFIG
 # ----------------------------
-SOURCE_PATH = "/mnt/ssd/HMeshi/_2_UI_Uten/_0_ui_box/_0_used/_0_color_picker/b_no.png"
+SOURCE_PATH = "/mnt/ssd/HMeshi/_2_UI_Uten/_0_color_picker/title_txt.png"
 
 COLOR_MODE = "median"       # "median" | "mean" | "dominant" | "center"
 ALPHA_THRESHOLD = 1         # pixels below this alpha are ignored
@@ -73,6 +77,29 @@ def rgba_to_int_triplet(rgba: tuple[int, int, int, int]) -> tuple[int, ...]:
 	return rgba if INCLUDE_ALPHA else rgba[:3]
 
 
+# --- helper: rgb_to_rgba
+def rgb_to_rgba(rgb) -> tuple[int, int, int, int]:
+	if len(rgb) == 3:
+		r, g, b = rgb
+		a = 255
+	elif len(rgb) == 4:
+		r, g, b, a = rgb
+	else:
+		raise ValueError("PREDEFINED_RGB must be (r, g, b) or (r, g, b, a)")
+
+	rgba = []
+	for value in (r, g, b, a):
+		if isinstance(value, (bool, np.bool_)):
+			raise ValueError("PREDEFINED_RGB values must be numbers from 0 to 255")
+
+		channel = float(value)
+		if not np.isfinite(channel) or channel < 0 or channel > 255:
+			raise ValueError("PREDEFINED_RGB values must be numbers from 0 to 255")
+		rgba.append(int(round(channel)))
+
+	return tuple(rgba)
+
+
 def valid_pixels(img: Image.Image) -> list[tuple[int, int, int, int]]:
 	rgba = image_to_rgba(img)
 	pixels = []
@@ -125,10 +152,20 @@ def print_color(image_path: Path) -> None:
 	print(f"  triplet_01: {rgba_to_float_triplet(rgba)}")
 
 
+# --- helper: print_predefined_color
+def print_predefined_color(rgb: tuple[int, ...]) -> None:
+	rgba = rgb_to_rgba(rgb)
+	print(rgba_to_hex(rgba))
+
+
 #%% ----------------------------
 # MAIN
 # ----------------------------
 def main() -> None:
+	if PREDEFINED_RGB is not None:
+		print_predefined_color(PREDEFINED_RGB)
+		return
+
 	images = collect_images(Path(SOURCE_PATH).resolve(), RECURSIVE)
 	if not images:
 		raise RuntimeError(f"No images found in {SOURCE_PATH} with extensions {sorted(INCLUDE_EXTS)}")

@@ -8,20 +8,23 @@ from PIL import Image
 
 EXTERNAL_OUT_DIR = True
 # EXTERNAL_OUT_DIR = False
-out_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_3_icon_collection/"
+out_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_3_icon_collection/26_0601/"
+out_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/export/_0_title_pack_gradient_band/"
 
 # ----------------------------
 # CONFIG
 # ----------------------------
-root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/gemini_uibox/_2_export/_2_strokes/cropped/h-stroke/"
-root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_1_icon/export/"
-root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/disk/clamp/"
+root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/stars/"
+root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/rice_ball/"
+root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/export/"
+# root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/title/"
 
 name = "ui_pack"
 name = "icon_pack"
+name = "title_pack"
 
 LAZY_ATLAS_BAKE = False         # True -> run _-1_concate_atlas.py after processing
-LAZY_ATLAS_BAKE = True
+# LAZY_ATLAS_BAKE = True
 
 if not EXTERNAL_OUT_DIR:
 	out_dir = os.path.join(root_dir, f"./_0_{name}_gradient_band/")
@@ -31,27 +34,33 @@ OUT_DIR     = out_dir
 
 INCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 ALPHA_THRESHOLD = 1
+
 # GRADIENT_BAND_PERCENT = 2
 GRADIENT_BAND_PERCENT = 1
+GRADIENT_BAND_PERCENT = 0.5
 
 OVERWRITE = True
 EDGE_TINT_ENABLED = True
-EDGE_TINT_COLOR = (200, 210, 230)      # light blue-white 
+EDGE_TINT_COLOR   = (200, 210, 230)      # light blue-white 
 # EDGE_TINT_COLOR = (255, 255, 255)	   # pure white
 # EDGE_TINT_COLOR = (0, 0, 0)	   # pure dark
-EDGE_TINT_COLOR = (119,136,153)		   # steel dark 
-# EDGE_TINT_COLOR = (6, 7, 11)  # default text dark
+# EDGE_TINT_COLOR = (119,136,153) # steel dark 
+# EDGE_TINT_COLOR = (6, 7, 11)    # default text dark
 
 EDGE_TINT_STRENGTH = 0.55
 INWARD_ALPHA_FLOOR = 96
 INWARD_TINT_BIAS = 0.55
 
 COLOR_MODE = "original"         # "original" | "hard_set_color"
-# COLOR_MODE = "hard_set_color"
+COLOR_MODE = "hard_set_color"
+
+
 
 GRADIENT_DIRECTION = "inward"   # "inward" | "outward"
 # GRADIENT_DIRECTION = "outward" 
 OUTWARD_PADDING = 2
+
+AUTO_CROP = True
 
 def _collect_images(source_dir: str):
 	src = Path(source_dir)
@@ -67,6 +76,24 @@ def _collect_images(source_dir: str):
 		raise RuntimeError(f"No images found in {source_dir} with extensions {sorted(INCLUDE_EXTS)}")
 
 	return sorted(paths, key=lambda p: p.name.lower())
+
+
+# --- helper: _auto_crop
+def _auto_crop(img: Image.Image) -> Image.Image:
+	if not AUTO_CROP:
+		return img
+
+	alpha = img.getchannel("A")
+	if ALPHA_THRESHOLD <= 1:
+		bbox = alpha.getbbox()
+	else:
+		mask = alpha.point(lambda a: 255 if a >= ALPHA_THRESHOLD else 0, "L")
+		bbox = mask.getbbox()
+
+	if bbox is None:
+		return img
+
+	return img.crop(bbox)
 
 
 def _alpha_bounds(img: Image.Image):
@@ -357,6 +384,7 @@ def _apply_outward_gradient_band(img: Image.Image) -> tuple[Image.Image, int]:
 
 def process_image(path: Path, out_dir: Path):
 	img = Image.open(path).convert("RGBA")
+	img = _auto_crop(img)
 	img = _prepare_color_mode(img)
 	if GRADIENT_DIRECTION == "inward":
 		processed, band_px = _apply_inward_gradient_band(img)

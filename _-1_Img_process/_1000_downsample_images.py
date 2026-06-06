@@ -6,11 +6,11 @@ from PIL import Image
 # ----------------------------
 # CONFIG
 # ----------------------------
-SOURCE_DIR = "/mnt/ssd/HMeshi/_2_UI_Uten/gemini_uibox/_2_export/_2_strokes/cropped/for_downsample/"
+SOURCE_DIR = "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/title/"
 OUTPUT_DIR = None
 MODE = "scale"  # "scale" or "max_edge"
-SCALE = 0.33
-MAX_EDGE = 512
+SCALE = 0.64
+MAX_EDGE = 2560
 RESAMPLE = "lanczos"  # "nearest" | "bilinear" | "bicubic" | "lanczos"
 OVERWRITE = False
 RECURSIVE = True
