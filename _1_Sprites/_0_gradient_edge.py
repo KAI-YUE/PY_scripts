@@ -14,17 +14,15 @@ out_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/export/_0_title_pack_gradie
 # ----------------------------
 # CONFIG
 # ----------------------------
-root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/stars/"
-root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/rice_ball/"
 root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/export/"
-# root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/title/"
+root_dir = "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/export/kanji/"
 
 name = "ui_pack"
 name = "icon_pack"
 name = "title_pack"
 
 LAZY_ATLAS_BAKE = False         # True -> run _-1_concate_atlas.py after processing
-# LAZY_ATLAS_BAKE = True
+LAZY_ATLAS_BAKE = True
 
 if not EXTERNAL_OUT_DIR:
 	out_dir = os.path.join(root_dir, f"./_0_{name}_gradient_band/")
@@ -45,7 +43,7 @@ EDGE_TINT_COLOR   = (200, 210, 230)      # light blue-white
 # EDGE_TINT_COLOR = (255, 255, 255)	   # pure white
 # EDGE_TINT_COLOR = (0, 0, 0)	   # pure dark
 # EDGE_TINT_COLOR = (119,136,153) # steel dark 
-# EDGE_TINT_COLOR = (6, 7, 11)    # default text dark
+EDGE_TINT_COLOR = (6, 7, 11)    # default text dark
 
 EDGE_TINT_STRENGTH = 0.55
 INWARD_ALPHA_FLOOR = 96
@@ -53,8 +51,8 @@ INWARD_TINT_BIAS = 0.55
 
 COLOR_MODE = "original"         # "original" | "hard_set_color"
 COLOR_MODE = "hard_set_color"
-
-
+HARD_SET_COLOR = None           # None -> median sprite color; accepts (r, g, b), "#RGB", "#RRGGBB", "#RRGGBBAA"
+HARD_SET_COLOR = "#433F3EFF"
 
 GRADIENT_DIRECTION = "inward"   # "inward" | "outward"
 # GRADIENT_DIRECTION = "outward" 
@@ -150,37 +148,67 @@ def _median_channel(values: list[int]) -> int:
 	return int(round((values[mid - 1] + values[mid]) / 2.0))
 
 
+# --- helper: _parse_rgb_color
+def _parse_rgb_color(color) -> tuple[int, int, int]:
+	if isinstance(color, str):
+		value = color.strip()
+		if value.startswith("#"):
+			value = value[1:]
+		if len(value) == 3:
+			value = "".join(ch * 2 for ch in value)
+		if len(value) == 8:
+			value = value[:6]
+		if len(value) != 6:
+			raise ValueError(f"Expected hex color as #RGB, #RRGGBB, or #RRGGBBAA, got: {color!r}")
+		try:
+			return tuple(int(value[i:i + 2], 16) for i in range(0, 6, 2))
+		except ValueError as exc:
+			raise ValueError(f"Invalid hex color: {color!r}") from exc
+
+	if len(color) != 3:
+		raise ValueError(f"Expected RGB tuple/list with 3 values, got: {color!r}")
+
+	rgb = tuple(int(c) for c in color)
+	for channel in rgb:
+		if channel < 0 or channel > 255:
+			raise ValueError(f"RGB channel out of range 0..255: {color!r}")
+	return rgb
+
+
 def _hard_set_sprite_color(img: Image.Image) -> Image.Image:
 	pix = img.load()
 	w, h = img.size
-	red = []
-	green = []
-	blue = []
+	if HARD_SET_COLOR is None:
+		red = []
+		green = []
+		blue = []
 
-	for y in range(h):
-		for x in range(w):
-			r, g, b, a = pix[x, y]
-			if a >= ALPHA_THRESHOLD:
-				red.append(r)
-				green.append(g)
-				blue.append(b)
+		for y in range(h):
+			for x in range(w):
+				r, g, b, a = pix[x, y]
+				if a >= ALPHA_THRESHOLD:
+					red.append(r)
+					green.append(g)
+					blue.append(b)
 
-	if not red:
-		return img.copy()
+		if not red:
+			return img.copy()
 
-	median_rgb = (
-		_median_channel(red),
-		_median_channel(green),
-		_median_channel(blue),
-	)
+		target_rgb = (
+			_median_channel(red),
+			_median_channel(green),
+			_median_channel(blue),
+		)
+	else:
+		target_rgb = _parse_rgb_color(HARD_SET_COLOR)
 
 	out = img.copy()
 	out_pix = out.load()
-	mr, mg, mb = median_rgb
+	tr, tg, tb = target_rgb
 	for y in range(h):
 		for x in range(w):
 			_, _, _, a = out_pix[x, y]
-			out_pix[x, y] = (mr, mg, mb, a)
+			out_pix[x, y] = (tr, tg, tb, a)
 
 	return out
 

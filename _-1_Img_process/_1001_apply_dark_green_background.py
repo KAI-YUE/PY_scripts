@@ -8,7 +8,7 @@ from PIL import Image
 #%% ----------------------------
 # CONFIG
 # ----------------------------
-SOURCE_PATH = "/home/kyue/Music/folder/"
+SOURCE_PATH = "/mnt/ssd/HMeshi/_2_UI_Uten/for_comf/"
 OUTPUT_DIR = os.path.join(SOURCE_PATH, "green")
 OUTPUT_SUFFIX = "_dark_green_bg"
 

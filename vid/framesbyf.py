@@ -1,12 +1,8 @@
-# -*- coding: utf-8 -*-
 """
 Extract frames from an MP4 and save them as JPGs.
-Works well in Spyder: edit variables, then run the file.
 """
-
 import os
 import cv2
-
 
 def extract_frames_to_jpg(video_path, output_dir, prefix="frame", start_frame=0, step=1, max_frames=None, jpeg_quality=95):
 	"""
