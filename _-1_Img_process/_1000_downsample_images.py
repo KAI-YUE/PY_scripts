@@ -6,7 +6,7 @@ from PIL import Image
 # ----------------------------
 # CONFIG
 # ----------------------------
-SOURCE_DIR = "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/title/"
+SOURCE_DIR = "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/title/ori_blur/"
 OUTPUT_DIR = None
 MODE = "scale"  # "scale" or "max_edge"
 SCALE = 0.64

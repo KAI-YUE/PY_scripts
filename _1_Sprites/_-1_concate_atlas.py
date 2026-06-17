@@ -17,15 +17,15 @@ _export_atlas_name = "title_pack"
 root_dir = os.environ.get(
 	"ATLAS_ROOT_DIR",
 	# "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/title/downsampled/",
-	"/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/_0_title_pack_gradient_band/"
-	# "/mnt/ssd/HMeshi/_2_UI_Uten/_3_icon_collection/26_0601/",
+	"/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/_00_export/",
+	# "/mnt/ssd/HMeshi/_2_UI_Uten/_3_icon_collection/26_0607/",
 	# "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/export/_0_title_pack_gradient_band/"
 )
 # root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/terrain/"
 name = os.environ.get("ATLAS_NAME", _export_atlas_name)
 
 if TO_GAME_DIR:
-	output_dir = "/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/hm/ui/"
+	output_dir = "/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/ui"
 else:
 	output_dir = root_dir
 
