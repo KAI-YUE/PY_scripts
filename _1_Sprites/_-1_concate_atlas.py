@@ -10,16 +10,15 @@ TO_GAME_DIR = True
 _export_atlas_name = "icon_pack"
 # _export_atlas_name = "map"
 _export_atlas_name = "title_pack"
+_export_atlas_name = "ui_pack"
+_export_atlas_name = "console_pack"
 
 # ----------------------------
 # CONFIG (edit these)
 # ----------------------------
 root_dir = os.environ.get(
 	"ATLAS_ROOT_DIR",
-	# "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/title/downsampled/",
-	"/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/_00_export/",
-	# "/mnt/ssd/HMeshi/_2_UI_Uten/_3_icon_collection/26_0607/",
-	# "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/export/_0_title_pack_gradient_band/"
+	"/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/_00_btn_exort/"
 )
 # root_dir = "/mnt/ssd/HMeshi/-1_field_landscape/terrain/"
 name = os.environ.get("ATLAS_NAME", _export_atlas_name)
@@ -35,7 +34,7 @@ OUT_ATLAS_JSON = os.path.join(output_dir, "./{:s}.json".format(name))
 
 INCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 MAX_ATLAS_WIDTH = 4096					# typical: 1024/2048/4096
-# MAX_ATLAS_WIDTH = 2048
+MAX_ATLAS_WIDTH = 2048
 # MAX_ATLAS_WIDTH = 1024				# typical: 1024/2048/4096
 PADDING = 6						        # space between sprites to avoid bleeding
 # PADDING = 0
