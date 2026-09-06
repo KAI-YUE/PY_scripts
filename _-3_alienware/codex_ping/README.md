@@ -17,7 +17,7 @@ Requires Python 3, `crontab`, an active cron service, `notify-send` (the
 or the Codex VS Code extension under `~/.vscode/extensions`. No pip packages needed.
 Run as your normal desktop user, without `sudo`.
 
-From the `_5_PYscripts/_-3_alienware/codex_ping` directory:
+From the `_5_PYscripts` project directory:
 
 ```bash
 sudo apt install libnotify-bin
@@ -43,6 +43,18 @@ Cron needs access to the same home directory and saved login as your desktop use
 If you use a custom `CODEX_HOME`, set it explicitly in your crontab.
 
 ## Behavior and checks
+
+To change the daily schedule, edit `time_stamps` in the `__main__` block at the
+bottom of `codex_ping.py`, then run `python3 codex_ping.py --install` from its folder:
+
+```python
+time_stamps = ["06:00", "14:00", "19:30"]
+```
+
+Use local 24-hour `HH:MM` times. Add or remove entries as needed; duplicates are
+ignored and invalid times leave the installed schedule untouched. An empty list
+disables scheduled pings while keeping notification retries. Use `--uninstall`
+to remove both. Editing the list alone does not update cron.
 
 - Reads `/proc/acpi/button/lid/*/state`; an open or unknown lid prevents a request.
 - Uses an empty temporary working directory, a read-only sandbox, and an ephemeral

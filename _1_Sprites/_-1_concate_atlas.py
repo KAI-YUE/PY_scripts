@@ -13,7 +13,7 @@ dir_name = "/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/ui/"
 subfolder = "utensils/"
 dir = dir_name + subfolder
 
-dir = "/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/ui/title/title_pack_pieces/"
+dir = "/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/ui/icons/card_pawn_icon_pack_pieces/"
 
 # ----------------------------
 # CONFIG (edit these)

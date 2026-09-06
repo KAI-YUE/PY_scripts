@@ -80,7 +80,17 @@ def notify_pending():
 
 
 # --- Helper: update_schedule
-def update_schedule(remove=False):
+def update_schedule(time_stamps, remove=False):
+    times = []
+    if not remove:
+        for stamp in time_stamps:
+            try:
+                time = datetime.strptime(stamp, "%H:%M")
+            except (TypeError, ValueError):
+                raise RuntimeError(f"Invalid time stamp {stamp!r}; use HH:MM (00:00–23:59).") from None
+            times.append((time.hour, time.minute))
+        times = sorted(set(times))
+
     current = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
     if current.returncode and "no crontab for" not in current.stderr.lower():
         raise RuntimeError(current.stderr.strip() or "Cannot read crontab.")
@@ -91,12 +101,14 @@ def update_schedule(remove=False):
         if "\n" in command or "\r" in command:
             raise RuntimeError("The script path must not contain a newline.")
         command = command.replace("%", r"\%")
-        lines.append(f"0 6,14 * * * {command} {MARKER}")
+        for hour, minute in times:
+            lines.append(f"{minute} {hour} * * * {command} {MARKER}")
         lines.append(f"* * * * * {command} --notify {MARKER}")
 
     subprocess.run(["crontab", "-"], input="\n".join(lines) + "\n", text=True, check=True)
+    schedule = ", ".join(f"{hour:02d}:{minute:02d}" for hour, minute in times) or "no pings"
     print("Schedule removed." if remove else
-          "Installed: daily at 06:00 and 14:00; queued notifications checked every minute.")
+          f"Installed: {schedule}; queued notifications checked every minute.")
 
 
 # --- Helper: ping
@@ -146,7 +158,7 @@ def ping(dry_run=False):
 # -----------------------------
 # main
 # -----------------------------
-def main():
+def main(time_stamps):
     parser = argparse.ArgumentParser(description=__doc__)
     options = parser.add_mutually_exclusive_group()
     options.add_argument("--dry-run", action="store_true", help="Check setup without sending a request")
@@ -162,7 +174,7 @@ def main():
                                 format="%(asctime)s %(levelname)s %(message)s")
 
         if args.install or args.uninstall:
-            update_schedule(remove=args.uninstall)
+            update_schedule(time_stamps, remove=args.uninstall)
         elif args.notify:
             notify_pending()
         else:
@@ -179,4 +191,6 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # Daily local times (24-hour HH:MM); edit this list, then run --install again.
+    time_stamps = ["06:00", "14:00"]
+    sys.exit(main(time_stamps))
