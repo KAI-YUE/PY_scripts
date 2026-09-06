@@ -6,10 +6,12 @@ from PIL import Image
 # ----------------------------
 # CONFIG
 # ----------------------------
-SOURCE_DIR = "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/title/ori_blur/"
+# SOURCE_DIR = "/mnt/ssd/HMeshi/_2_UI_Uten/_1_login_page/title_and_blur/"
+SOURCE_DIR = "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/_00_grayed_icons/"
 OUTPUT_DIR = None
+
 MODE = "scale"  # "scale" or "max_edge"
-SCALE = 0.64
+SCALE = 0.61
 MAX_EDGE = 2560
 RESAMPLE = "lanczos"  # "nearest" | "bilinear" | "bicubic" | "lanczos"
 OVERWRITE = False

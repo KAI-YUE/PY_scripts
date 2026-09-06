@@ -8,7 +8,7 @@ from PIL import Image
 #%% ----------------------------
 # CONFIG
 # ----------------------------
-SOURCE_PATH = "/mnt/ssd/HMeshi/_2_UI_Uten/for_comf/"
+SOURCE_PATH = "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/_0_inter_btn/"
 OUTPUT_DIR = os.path.join(SOURCE_PATH, "green")
 OUTPUT_SUFFIX = "_dark_green_bg"
 

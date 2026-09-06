@@ -6,9 +6,10 @@ from PIL import Image
 #%% ----------------------------
 # CONFIG
 # ----------------------------
-SOURCE_PATH = "/mnt/ssd/HMeshi/_2_UI_Uten/-1_gemini_uibox/_2_export/tmp/"
+# SOURCE_PATH = "/mnt/ssd/HMeshi/_2_UI_Uten/-1_gemini_uibox/_2_export/tmp/"
+SOURCE_PATH = "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/_-1_prev/prev/_01_non_mono/"
 
-OUTPUT_SUFFIX = ""
+OUTPUT_SUFFIX = "_mask"
 OVERWRITE = False
 
 ALPHA_THRESHOLD = 1         # pixels >= this alpha are treated as sprite pixels

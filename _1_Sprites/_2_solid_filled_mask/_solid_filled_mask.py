@@ -11,7 +11,8 @@ from PIL import Image, ImageChops, ImageFilter
 # ----------------------------
 SOURCE_DIR = os.environ.get(
 	"GLYPH_SOURCE_DIR",
-	"/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/_-1_prev/_0_title_page/_00_export",
+	# "/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/_-1_prev/_0_title_page/_00_export",
+	"/mnt/ssd/HMeshi/_2_UI_Uten/_4_gampad_btns/inter_btn_pack_pieces/tape_edge/"
 )
 OUTPUT_DIR = os.environ.get("GLYPH_OUTPUT_DIR", os.path.join(SOURCE_DIR, "_solid_filled_mask"))
 GLOB_PATTERN = os.environ.get("GLYPH_GLOB", "_pr_eng*.png")

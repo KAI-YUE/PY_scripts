@@ -6,22 +6,23 @@ from pathlib import Path
 from PIL import Image
 
 _export_atlas_name = "ui_pack"
+_export_atlas_name = "hud_pack"
+_export_atlas_name = "icon_pack"
 _export_atlas_name = "title_pack"
-_export_atlas_name = "cards"
+_export_atlas_name = "colorful_bg"
+# _export_atlas_name = "inter_btn_pack"
+# _export_atlas_name = "card_pawn_icon_pack"
+
+_export_atlas_name = "right_bubbles"
+_export_atlas_name = "theme_pack"
+
+dir = "/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/ui/buttons/"
 
 # ----------------------------
 # CONFIG (edit these)
 # ----------------------------
-root_dir = os.environ.get(
-	"ATLAS_ROOT_DIR",
-	# "/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/ui",
-	"/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/card/cards/500_aa/"
-)
+root_dir = os.environ.get("ATLAS_ROOT_DIR", dir)
 name = os.environ.get("ATLAS_NAME", _export_atlas_name)
-
-SOURCE_ATLAS_PNG = os.path.join(root_dir, "./{:s}.png".format(name))
-SOURCE_ATLAS_JSON = os.path.join(root_dir, "./{:s}.json".format(name))
-OUTPUT_DIR = os.environ.get("ATLAS_OUTPUT_DIR", os.path.join(root_dir, "./{:s}_pieces".format(name)))
 
 OVERWRITE = True
 RESTORE_SOURCE_CANVAS = True			# uses sourceSize/spriteSourceSize when json has them
@@ -36,6 +37,39 @@ def _read_json(path: Path) -> dict:
 		raise FileNotFoundError(f"Atlas json not found: {path}")
 	with open(path, "r", encoding="utf-8") as f:
 		return json.load(f)
+
+
+def _find_atlas_pairs(root: Path) -> list[tuple[str, Path, Path]]:
+	pairs = []
+	for json_path in root.glob("*.json"):
+		png_path = json_path.with_suffix(".png")
+		if png_path.exists():
+			pairs.append((json_path.stem, png_path, json_path))
+	return pairs
+
+
+def _resolve_atlas(root: Path, preferred_name: str) -> tuple[str, Path, Path]:
+	atlas_path = root / f"{preferred_name}.png"
+	json_path = root / f"{preferred_name}.json"
+	if atlas_path.exists() and json_path.exists():
+		return preferred_name, atlas_path, json_path
+
+	pairs = _find_atlas_pairs(root)
+	if not pairs:
+		raise FileNotFoundError(
+			f"No atlas png/json pair found in {root}. Tried: {atlas_path} and {json_path}"
+		)
+
+	def newest_mtime(pair: tuple[str, Path, Path]) -> float:
+		_, png_path, json_path = pair
+		return max(png_path.stat().st_mtime, json_path.stat().st_mtime)
+
+	resolved_name, resolved_png, resolved_json = max(pairs, key=newest_mtime)
+	print(
+		f"Atlas '{preferred_name}' not found; using detected atlas '{resolved_name}' "
+		f"from {root}"
+	)
+	return resolved_name, resolved_png, resolved_json
 
 
 def _frame_rect(frame: dict) -> tuple[int, int, int, int]:
@@ -97,11 +131,11 @@ def _write_sprite(img: Image.Image, path: Path) -> None:
 # MAIN
 # ----------------------------
 def dismantle_atlas() -> None:
-	atlas_path = Path(SOURCE_ATLAS_PNG)
-	json_path = Path(SOURCE_ATLAS_JSON)
-	output_dir = Path(OUTPUT_DIR)
-	if not atlas_path.exists():
-		raise FileNotFoundError(f"Atlas png not found: {atlas_path}")
+	root_path = Path(root_dir)
+	resolved_name, atlas_path, json_path = _resolve_atlas(root_path, name)
+	output_dir = Path(
+		os.environ.get("ATLAS_OUTPUT_DIR", root_path / f"{resolved_name}_pieces")
+	)
 
 	meta = _read_json(json_path)
 	frames = meta.get("frames", {})

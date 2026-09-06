@@ -10,7 +10,7 @@ PREDEFINED_RGB = None      # None | (r, g, b) | (r, g, b, a) | 255*np.array((r, 
 #%% ----------------------------
 # CONFIG
 # ----------------------------
-SOURCE_PATH = "/mnt/ssd/HMeshi/_2_UI_Uten/_0_color_picker/blue_theme.jpg"
+SOURCE_PATH = "/home/kyue/Desktop/f4.png"
 
 COLOR_MODE = "median"       # "median" | "mean" | "dominant" | "center"
 ALPHA_THRESHOLD = 1         # pixels below this alpha are ignored

@@ -72,9 +72,13 @@ def extract_frames_to_jpg(video_path, output_dir, prefix="frame", start_frame=0,
 
 # ====== EDIT THESE ======
 # root_path = r"D:\HMeshi\-1_field_landscape\birds"
-root_path = "/mnt/win-ssd/Users/Projects/SD/ComfyUI/output/video/rolling_pin/"
-video_path = os.path.join(root_path, "3.mp4")
-output_dir = os.path.join(root_path, "fbf")
+# root_path = "/mnt/win-ssd/Users/Projects/SD/ComfyUI/output/video/rolling_pin/"
+root_path = r"/mnt/win-ssd/Users/Projects/SD/ComfyUI/output/video/title_faceless/"
+
+idx = 4
+
+video_path = os.path.join(root_path, "{:d}.mp4".format(idx))
+output_dir = os.path.join(root_path, "{:d}".format(idx))
 # ========================
 
 extract_frames_to_jpg(
