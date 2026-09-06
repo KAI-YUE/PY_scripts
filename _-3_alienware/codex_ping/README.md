@@ -47,6 +47,9 @@ If you use a custom `CODEX_HOME`, set it explicitly in your crontab.
 - Reads `/proc/acpi/button/lid/*/state`; an open or unknown lid prevents a request.
 - Uses an empty temporary working directory, a read-only sandbox, and an ephemeral
   session. User config is ignored for the request, while saved authentication is reused.
+- Sets `project_doc_max_bytes=0` for the ping to disable loading global/project
+  `AGENTS.md` instructions. The empty working directory also keeps project files
+  out of the request. Your normal VS Code instructions and settings are unchanged.
 - Sends `Reply only OK. Do not use tools, read files, or perform any other work.`
 - Prevents overlapping requests and limits the request to 90 seconds.
 - Logs skips, success, and failures to `~/.local/state/codex-ping/ping.log`, with

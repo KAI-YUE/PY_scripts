@@ -131,6 +131,7 @@ def ping(dry_run=False):
 
         with tempfile.TemporaryDirectory(prefix="codex-ping-") as directory:
             command = [executable, "exec", "--ignore-user-config", "--ephemeral",
+                       "-c", "project_doc_max_bytes=0",
                        "--sandbox", "read-only", "--skip-git-repo-check", "--cd", directory,
                        "Reply only OK. Do not use tools, read files, or perform any other work."]
             result = subprocess.run(command, env=env, stdin=subprocess.DEVNULL,
