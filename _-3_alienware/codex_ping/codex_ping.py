@@ -192,5 +192,5 @@ def main(time_stamps):
 
 if __name__ == "__main__":
     # Daily local times (24-hour HH:MM); edit this list, then run --install again.
-    time_stamps = ["06:00", "14:00"]
+    time_stamps = ["4:30", "06:00", "11:05", "14:00", "18:30"]
     sys.exit(main(time_stamps))
