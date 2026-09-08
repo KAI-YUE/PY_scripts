@@ -1,6 +1,6 @@
 # Codex lid ping
 
-Runs a small, separate Codex request at 06:00 and 14:00 daily when the laptop
+Runs a small, separate Codex request at 03:50, 09:00, 11:05, 14:00 and 18:30 daily when the laptop
 lid is closed. The laptop must remain awake and have internet access.
 
 Cron stores a schedule in your user's crontab and launches this Python script.
@@ -57,6 +57,15 @@ disables scheduled pings while keeping notification retries. Use `--uninstall`
 to remove both. Editing the list alone does not update cron.
 
 - Reads `/proc/acpi/button/lid/*/state`; an open or unknown lid prevents a request.
+- Before each request, logs NetworkManager device states. If neither Wi-Fi nor
+  Ethernet is connected, enables Wi-Fi and waits up to 20 seconds for saved
+  autoconnect profiles. This cannot override a hardware radio block, missing
+  credentials, or NetworkManager permission restrictions in cron.
+- Logs a ping to `1.1.1.1` and an HTTPS probe to `https://chatgpt.com/`, including
+  DNS/TCP/TLS timings. Probe failures do not prevent the Codex attempt; ICMP may
+  be blocked and HTTP 403 still shows that an HTTPS server was reached.
+  Requires `nmcli`, `nm-online`, `ping`, and `curl` for these checks; missing
+  utilities are logged. Connected interfaces are not restarted.
 - Uses an empty temporary working directory, a read-only sandbox, and an ephemeral
   session. User config is ignored for the request, while saved authentication is reused.
 - Sets `project_doc_max_bytes=0` for the ping to disable loading global/project
@@ -64,8 +73,16 @@ to remove both. Editing the list alone does not update cron.
   out of the request. Your normal VS Code instructions and settings are unchanged.
 - Sends `Reply only OK. Do not use tools, read files, or perform any other work.`
 - Prevents overlapping requests and limits the request to 90 seconds.
+- Requires JSON events confirming a completed turn, an `OK` reply, and positive
+  input/output token counts. Exit code zero alone does not count as success.
 - Logs skips, success, and failures to `~/.local/state/codex-ping/ping.log`, with
-  two rotated backups. It does not log authentication tokens or response content.
+  two rotated backups. Verified runs include input/output token counts; raw
+  output is normally omitted. On timeout, nonzero exit, or response verification failure, the last 4,000
+  characters of each output stream are logged with common credential patterns
+  redacted. Review diagnostics before sharing them.
+- Logs the selected CLI path/version and start times and elapsed durations for
+  network checks, individual probes, login checks, and the Codex request, including
+  elapsed duration when a command fails or times out.
 - Does not retry failures; the next attempt is the next scheduled run.
 - Queues success/failure messages as `.pending` files in the log directory and
   immediately sends them through the desktop notification service, regardless of
@@ -87,6 +104,9 @@ python3 codex_ping.py --uninstall
 
 After the first successful request following an idle period, check the Codex
 usage dashboard or CLI `/status` to see whether the reset time matches your goal.
+Notifications confirm a model response, not that a new five-hour window started.
+Earlier scheduled or manual activity can still affect the window. Cron does not wake a
+suspended laptop. Reinstall the schedule after changing the times.
 
 Official references: [scripted Codex runs](https://learn.chatgpt.com/docs/non-interactive-mode)
 and [usage limits](https://learn.chatgpt.com/docs/pricing).

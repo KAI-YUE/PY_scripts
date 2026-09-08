@@ -132,13 +132,6 @@ are preserved in `edge_schedule.py`.
 
 ## Instant launch
 
-`search_edge.sh` runs immediately in your current desktop session, without a lid
-check or startup countdown. It defaults to 20 random queries after outstanding
-daily priorities, with 5–15 second waits. Screen-wake and launcher delays still
-apply. It shares the scheduler's run lock to prevent overlapping input. It uses
-`python3` on your current PATH and requires `flock` (util-linux). It does not
-change cron, clear pending retries, or send scheduler notifications.
-
 The `search_edge` alias is registered in `~/.bash_aliases` on this machine.
 Open a new Bash terminal or load it into your current terminal:
 

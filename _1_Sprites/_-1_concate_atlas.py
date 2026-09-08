@@ -3,17 +3,17 @@
 import os
 import json
 from pathlib import Path
-from PIL import Image
+from PIL     import Image
 
 TO_GAME_DIR = True
 
-_export_atlas_name = "title_pack"
+_export_atlas_name = "tape_paper_pack"
 
-dir_name = "/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/ui/"
-subfolder = "utensils/"
-dir = dir_name + subfolder
+dir_name   = "/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/ui/"
+subfolder  = "utensils/"
+dir        = dir_name + subfolder
 
-dir = "/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/ui/icons/card_pawn_icon_pack_pieces/"
+dir = "/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/ui/chara_interaction/"
 
 # ----------------------------
 # CONFIG (edit these)
@@ -29,8 +29,8 @@ if TO_GAME_DIR:
 else:
 	output_dir = root_dir
 
-SOURCE_DIR = os.path.join(root_dir, "./")			# folder with 0.png, 1.png, etc.
-OUT_ATLAS_PNG = os.path.join(output_dir, "./{:s}.png".format(name))
+SOURCE_DIR     = os.path.join(root_dir, "./")			# folder with 0.png, 1.png, etc.
+OUT_ATLAS_PNG  = os.path.join(output_dir, "./{:s}.png".format(name))
 OUT_ATLAS_JSON = os.path.join(output_dir, "./{:s}.json".format(name))
 
 INCLUDE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}

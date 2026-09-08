@@ -16,7 +16,7 @@ _export_atlas_name = "colorful_bg"
 _export_atlas_name = "right_bubbles"
 _export_atlas_name = "card_pawn_icon_pack"
 
-dir = "/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/ui/icons/"
+dir = "/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/ui/tape_paper_pieces/"
 
 # ----------------------------
 # CONFIG (edit these)

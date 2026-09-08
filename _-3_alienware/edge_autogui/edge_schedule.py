@@ -201,5 +201,5 @@ if __name__ == "__main__":
     # Daily local times (24-hour HH:MM); edit this list, then run --install again.
     time_stamps = ["04:06"]
     # Debug: one search per run. Change to "20" for the full loop.
-    search_args = ["--repeat", "1", "--wait-min", "5", "--wait-max", "42"]
+    search_args = ["--repeat", "41", "--wait-min", "5", "--wait-max", "12"]
     sys.exit(main(time_stamps, search_args))

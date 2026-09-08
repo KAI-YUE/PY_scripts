@@ -4,15 +4,18 @@
 import argparse
 from datetime import datetime
 import fcntl
+import json
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+import re
 from pathlib import Path
 import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
+from time import monotonic
 
 MARKER = "# codex-lid-ping"
 STATE = Path.home() / ".local/state/codex-ping"
@@ -111,6 +114,90 @@ def update_schedule(time_stamps, remove=False):
           f"Installed: {schedule}; queued notifications checked every minute.")
 
 
+# --- Helper: log_diagnostics
+def log_diagnostics(label, output):
+    if isinstance(output, bytes):
+        output = output.decode("utf-8", errors="replace")
+    output = output or "(no output)"
+    output = re.sub(r"(?i)(bearer\s+|(?:token|api[_-]?key|authorization)[\"\s:=]+)\S+",
+                    r"\1[redacted]", output)
+    output = re.sub(r"\b(?:sk-[\w-]+|eyJ[\w.-]+)", "[redacted]", output)
+    logging.info("%s: %s", label, output[-4000:].strip().replace("\n", " | "))
+
+
+# --- Helper: timed_run
+def timed_run(label, command, **kwargs):
+    started = monotonic()
+    logging.info("%s started (timeout=%ss).", label, kwargs.get("timeout"))
+    try:
+        result = subprocess.run(command, **kwargs)
+        logging.info("%s exited with code %s.", label, result.returncode)
+        return result
+    finally:
+        logging.info("%s elapsed: %.2fs.", label, monotonic() - started)
+
+
+# --- Helper: network_command
+def network_command(label, command, timeout):
+    try:
+        result = timed_run(label, command, capture_output=True, text=True, timeout=timeout,
+                                stdin=subprocess.DEVNULL, env={**os.environ, "LC_ALL": "C"})
+        log_diagnostics(f"{label} (exit {result.returncode})", result.stdout + result.stderr)
+        return result
+    except (OSError, subprocess.TimeoutExpired) as error:
+        logging.warning("%s: %s", label, error)
+        return None
+
+
+# --- Helper: prepare_network
+def prepare_network():
+    nmcli = shutil.which("nmcli")
+    if nmcli:
+        status = network_command("Network devices", [nmcli, "-t", "-f", "TYPE,STATE", "device"], 10)
+        connected = status and any(line in ("wifi:connected", "ethernet:connected")
+                                   for line in status.stdout.splitlines())
+        if status and status.returncode == 0 and not connected:
+            network_command("Enable Wi-Fi", [nmcli, "--wait", "10", "radio", "wifi", "on"], 15)
+            # NetworkManager reconnects saved profiles with autoconnect enabled.
+            network_command("Wait for connection", ["nm-online", "--quiet", "--timeout=20"], 25)
+            network_command("Network devices after wake", [nmcli, "-t", "-f", "TYPE,STATE", "device"], 10)
+    else:
+        logging.warning("nmcli missing; Wi-Fi wake unavailable.")
+
+    network_command("Internet ping", ["ping", "-n", "-c", "1", "-W", "5", "1.1.1.1"], 8)
+    # ICMP can be blocked; HTTPS checks DNS, TCP and TLS on the service host too.
+    network_command("ChatGPT HTTPS", ["curl", "--silent", "--show-error", "--output", "/dev/null",
+                    "--connect-timeout", "5", "--max-time", "15", "--write-out",
+                    "http=%{http_code} dns=%{time_namelookup}s connect=%{time_connect}s "
+                    "tls=%{time_appconnect}s total=%{time_total}s\n", "https://chatgpt.com/"], 20)
+    logging.info("Network checks complete; attempting Codex regardless of probe results.")
+
+
+# --- Helper: verify_response
+def verify_response(output):
+    try:
+        events = [json.loads(line) for line in output.splitlines() if line.strip()]
+    except json.JSONDecodeError:
+        raise RuntimeError("Codex returned invalid JSON; request is not verified.") from None
+    if any(not isinstance(event, dict) for event in events):
+        raise RuntimeError("Codex returned an invalid event; request is not verified.")
+    if any(event.get("type") == "turn.failed" for event in events):
+        raise RuntimeError("Codex reported a failed turn; request is not verified.")
+
+    replies = [(event["item"]["text"].strip() if isinstance(event["item"].get("text"), str) else "") for event in events
+               if event.get("type") == "item.completed"
+               and isinstance(event.get("item"), dict)
+               and event["item"].get("type") == "agent_message"]
+    completed = [event for event in events if event.get("type") == "turn.completed"]
+    usage = completed[-1].get("usage") if completed else None
+    if not replies or replies[-1] != "OK" or not isinstance(usage, dict):
+        raise RuntimeError("Codex did not complete with OK and token usage; request is not verified.")
+    if any(type(usage.get(key)) is not int or usage[key] <= 0
+           for key in ("input_tokens", "output_tokens")):
+        raise RuntimeError("Codex reported no input/output token usage; request is not verified.")
+    return usage
+
+
 # --- Helper: ping
 def ping(dry_run=False):
     closed = lid_closed()
@@ -133,26 +220,51 @@ def ping(dry_run=False):
             logging.info("Skipped: another ping is running.")
             return
 
+        logging.info("Scheduled ping started; Codex executable: %s", executable)
+        version = timed_run("Codex version", [executable, "--version"],
+                            capture_output=True, text=True, timeout=15)
+        log_diagnostics("Codex version", version.stdout + version.stderr)
+        started = monotonic()
+        logging.info("Network checks started.")
+        try:
+            prepare_network()
+        finally:
+            logging.info("Network checks elapsed: %.2fs.", monotonic() - started)
+
         env = os.environ.copy()
         for key in ("OPENAI_API_KEY", "CODEX_API_KEY"):
             env.pop(key, None)
-        auth = subprocess.run([executable, "login", "status"], env=env,
+        auth = timed_run("Codex login check", [executable, "login", "status"], env=env,
                               capture_output=True, text=True, timeout=15)
         if auth.returncode or "ChatGPT" not in auth.stdout + auth.stderr:
             raise RuntimeError("Codex must be logged in using ChatGPT; run codex login.")
 
         with tempfile.TemporaryDirectory(prefix="codex-ping-") as directory:
-            command = [executable, "exec", "--ignore-user-config", "--ephemeral",
+            command = [executable, "exec", "--ignore-user-config", "--ephemeral", "--json",
                        "-c", "project_doc_max_bytes=0",
                        "--sandbox", "read-only", "--skip-git-repo-check", "--cd", directory,
                        "Reply only OK. Do not use tools, read files, or perform any other work."]
-            result = subprocess.run(command, env=env, stdin=subprocess.DEVNULL,
-                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                    timeout=90)
+            try:
+                result = timed_run("Codex request", command, env=env, stdin=subprocess.DEVNULL,
+                                        capture_output=True, text=True, timeout=90)
+            except subprocess.TimeoutExpired as error:
+                log_diagnostics("Codex timeout stdout", error.stdout)
+                log_diagnostics("Codex timeout stderr", error.stderr)
+                raise RuntimeError("Codex timed out after 90 seconds; see diagnostics above.") from None
         if result.returncode:
+            log_diagnostics("Codex failure stdout", result.stdout)
+            log_diagnostics("Codex failure stderr", result.stderr)
             raise RuntimeError(f"Codex request failed (exit {result.returncode}).")
-        logging.info("Request succeeded; check Codex usage to verify the reset time.")
-        queue_notification("Request succeeded. Check Codex usage for the reset time.")
+        try:
+            usage = verify_response(result.stdout)
+        except RuntimeError:
+            log_diagnostics("Codex verification failure stdout", result.stdout)
+            log_diagnostics("Codex verification failure stderr", result.stderr)
+            raise
+        logging.info("Model response verified: OK; input_tokens=%s output_tokens=%s; reset time unverified.",
+                     usage["input_tokens"], usage["output_tokens"])
+        queue_notification("Model replied OK with token usage. Five-hour reset time is NOT verified; "
+                           "check Codex usage.")
 
 
 # -----------------------------
@@ -192,5 +304,5 @@ def main(time_stamps):
 
 if __name__ == "__main__":
     # Daily local times (24-hour HH:MM); edit this list, then run --install again.
-    time_stamps = ["4:30", "06:00", "11:05", "14:00", "18:30"]
+    time_stamps = ["03:50", "09:00", "11:05", "14:00", "18:30"]
     sys.exit(main(time_stamps))
