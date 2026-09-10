@@ -7,7 +7,7 @@ from PIL     import Image
 
 TO_GAME_DIR = True
 
-_export_atlas_name = "tape_paper_pack"
+_export_atlas_name = "chat_pack"
 
 dir_name   = "/mnt/ssd/HMeshi/_6_Lua/HM/resources/textures/ui/"
 subfolder  = "utensils/"
